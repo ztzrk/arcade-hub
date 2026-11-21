@@ -1,12 +1,38 @@
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import { LazyMotion, domAnimation } from "framer-motion";
 import { GlobalTopBar } from "./core/GlobalTopBar";
 import { EntryScreen, LobbyView } from "./core/LobbyView";
+import { SoloTopBar } from "./core/SoloTopBar";
 import { TauntOverlay } from "./core/TauntOverlay";
 import { useGameSocket } from "./core/useGameSocket";
 import { getGameComponent } from "./games/registry";
+import { getSoloGame } from "./games/soloRegistry";
+
+function getInitialSoloGameId(): string | null {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("room")) return null;
+  const soloParam = params.get("solo")?.trim();
+  return soloParam && getSoloGame(soloParam) ? soloParam : null;
+}
+
+function syncSoloQueryParam(gameId: string | null): void {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  if (gameId) {
+    url.searchParams.set("solo", gameId);
+    url.searchParams.delete("room");
+  } else {
+    url.searchParams.delete("solo");
+  }
+  window.history.replaceState({}, "", url.toString());
+}
 
 export function App() {
+  const [activeSoloGameId, setActiveSoloGameId] = useState<string | null>(() =>
+    getInitialSoloGameId()
+  );
+
   const {
     status,
     playerId,
@@ -32,6 +58,24 @@ export function App() {
     : "";
 
   const ActiveGameBoard = room ? getGameComponent(room.selectedGameId) : null;
+  const activeSoloGame = !room && activeSoloGameId ? getSoloGame(activeSoloGameId) : null;
+
+  const startSoloGame = (gameId: string) => {
+    if (!getSoloGame(gameId)) return;
+    syncSoloQueryParam(gameId);
+    setActiveSoloGameId(gameId);
+  };
+
+  const exitSoloGame = () => {
+    syncSoloQueryParam(null);
+    setActiveSoloGameId(null);
+  };
+
+  const handleJoinRoom = (roomId: string, playerName: string) => {
+    syncSoloQueryParam(null);
+    setActiveSoloGameId(null);
+    joinRoom(roomId, playerName);
+  };
 
   return (
     <LazyMotion features={domAnimation} strict>
@@ -45,7 +89,25 @@ export function App() {
         <TauntOverlay taunts={taunts} myPlayerId={playerId} />
 
         {!room ? (
-          resumingRoomId && (status === "connecting" || status === "reconnecting") ? (
+          activeSoloGame ? (
+            <>
+              <SoloTopBar
+                title={activeSoloGame.name}
+                badge={activeSoloGame.badge}
+                onExit={exitSoloGame}
+              />
+              <Suspense
+                fallback={
+                  <div className="flex min-h-[60dvh] items-center justify-center text-sm text-[#9c9689]">
+                    Memuat game solo...
+                  </div>
+                }
+              >
+                <activeSoloGame.Component onExit={exitSoloGame} />
+              </Suspense>
+            </>
+          ) : resumingRoomId &&
+            (status === "connecting" || status === "reconnecting") ? (
             <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-4 px-5 text-center">
               <div className="space-y-1.5">
                 <p className="font-display text-2xl text-[#ebe5d8]">
@@ -70,7 +132,8 @@ export function App() {
             <EntryScreen
               initialRoomCode={currentUrlRoomCode}
               status={status}
-              onJoin={joinRoom}
+              onJoin={handleJoinRoom}
+              onStartSolo={startSoloGame}
             />
           )
         ) : (

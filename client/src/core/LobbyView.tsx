@@ -1,16 +1,23 @@
 import { useState } from "react";
-import { Check, Copy } from "lucide-react";
+import { ArrowRight, Check, Copy } from "lucide-react";
 import type { PublicRoomState } from "@arcade-hub/shared";
 import { REGISTERED_GAMES } from "../games/registry";
+import { REGISTERED_SOLO_GAMES } from "../games/soloRegistry";
 import { createRoom, loadLastPlayerName, type SocketStatus } from "./useGameSocket";
 
 interface EntryScreenProps {
   initialRoomCode: string;
   status: SocketStatus;
   onJoin: (roomId: string, playerName: string) => void;
+  onStartSolo: (gameId: string) => void;
 }
 
-export function EntryScreen({ initialRoomCode, status, onJoin }: EntryScreenProps) {
+export function EntryScreen({
+  initialRoomCode,
+  status,
+  onJoin,
+  onStartSolo,
+}: EntryScreenProps) {
   const [playerName, setPlayerName] = useState(() => loadLastPlayerName());
   const [roomCode, setRoomCode] = useState(initialRoomCode);
   const [inviteMode, setInviteMode] = useState(() => Boolean(initialRoomCode));
@@ -170,6 +177,38 @@ export function EntryScreen({ initialRoomCode, status, onJoin }: EntryScreenProp
                 Masuk
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {!inviteMode && REGISTERED_SOLO_GAMES.length > 0 && (
+        <div className="mt-7 border-t border-white/10 pt-5">
+          <div className="mb-3 flex items-baseline justify-between">
+            <span className="text-xs font-medium text-[#9c9689]">
+              Main Solo — Tanpa Room
+            </span>
+          </div>
+          <div className="space-y-2.5">
+            {REGISTERED_SOLO_GAMES.map((game) => (
+              <button
+                key={game.id}
+                type="button"
+                onClick={() => onStartSolo(game.id)}
+                className="group flex w-full items-center justify-between gap-4 rounded-lg border border-white/12 border-l-4 border-l-[#f97316] bg-[#161714] px-4 py-3.5 text-left transition-colors hover:border-white/25 hover:bg-[#1b1c18] cursor-pointer"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="font-display text-lg text-[#ebe5d8] group-hover:text-[#fb923c] transition-colors">
+                    {game.name}
+                  </p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-[#9c9689]">
+                    {game.tagline}
+                  </p>
+                </div>
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-[#f97316]/40 bg-[#f97316]/15 text-[#fb923c] group-hover:bg-[#f97316] group-hover:text-[#111210] transition-colors">
+                  <ArrowRight className="h-4 w-4" />
+                </span>
+              </button>
+            ))}
           </div>
         </div>
       )}
