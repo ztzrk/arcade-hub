@@ -763,6 +763,11 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
                               <span className="truncate">
                                 {primaryResonance.name} (+{primaryResonance.ovrBonus})
                               </span>
+                              {resonances.length > 1 && (
+                                <span className="font-mono-tabular shrink-0 text-[10px] text-[#d4a24c]">
+                                  +{resonances.length - 1}
+                                </span>
+                              )}
                             </div>
                           )}
                         </div>

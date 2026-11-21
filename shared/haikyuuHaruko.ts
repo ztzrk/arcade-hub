@@ -1611,6 +1611,181 @@ export function computeActiveSynergies(
       involvedPlayerIds: ["nishinoya", "asahi"],
     });
   }
+  if (hasAll("oikawa", "kageyama")) {
+    activeSynergies.push({
+      id: "kitagawa-rivals",
+      name: "Rival Kitagawa Daiichi",
+      description: "Oikawa & Kageyama: Dua setter jenius saling memacu presisi tertinggi!",
+      ovrBonus: 1.8,
+      involvedPlayerIds: ["oikawa", "kageyama"],
+    });
+  }
+  if (hasAll("oikawa", "ushijima")) {
+    activeSynergies.push({
+      id: "miyagi-dream",
+      name: "Andai Kau di Shiratorizawa",
+      description: "Oikawa & Ushijima: Umpan terbaik Miyagi untuk meriam terkuat!",
+      ovrBonus: 1.8,
+      involvedPlayerIds: ["oikawa", "ushijima"],
+    });
+  }
+  if (hasAll("kuroo", "kenma")) {
+    activeSynergies.push({
+      id: "nekoma-spine",
+      name: "Otak & Jantung Nekoma",
+      description: "Kuroo & Kenma: Koneksi sahabat masa kecil yang menyambung segalanya!",
+      ovrBonus: 1.8,
+      involvedPlayerIds: ["kuroo", "kenma"],
+    });
+  }
+  if (hasAll("yaku", "lev")) {
+    activeSynergies.push({
+      id: "yaku-lev",
+      name: "Mentor Libero & Menara",
+      description: "Yaku & Lev: Tendangan disiplin mengubah tinggi badan jadi senjata blok!",
+      ovrBonus: 1.4,
+      involvedPlayerIds: ["yaku", "lev"],
+    });
+  }
+  if (hasAll("bokuto", "hinata")) {
+    activeSynergies.push({
+      id: "owl-disciple",
+      name: "Murid #1 Burung Hantu",
+      description: "Bokuto & Hinata: Feint & cross shot ajaran sang Ace Tokyo!",
+      ovrBonus: 1.6,
+      involvedPlayerIds: ["bokuto", "hinata"],
+    });
+  }
+  if (hasAll("kuroo", "bokuto")) {
+    activeSynergies.push({
+      id: "tokyo-captains",
+      name: "Kucing & Burung Hantu",
+      description: "Kuroo & Bokuto: Rekan latihan abadi dari kamp Tokyo!",
+      ovrBonus: 1.6,
+      involvedPlayerIds: ["kuroo", "bokuto"],
+    });
+  }
+  if (hasAll("akaashi", "kenma")) {
+    activeSynergies.push({
+      id: "tokyo-brains",
+      name: "Duo Otak Tokyo",
+      description: "Akaashi & Kenma: Strategi tenang membaca celah pertahanan lawan!",
+      ovrBonus: 1.4,
+      involvedPlayerIds: ["akaashi", "kenma"],
+    });
+  }
+  if (hasAll("atsumu", "suna")) {
+    activeSynergies.push({
+      id: "inarizaki-middle",
+      name: "Core Turn Inarizaki",
+      description: "Atsumu & Suna: Umpan agresif yang memaksimalkan sudut spike tengah!",
+      ovrBonus: 1.5,
+      involvedPlayerIds: ["atsumu", "suna"],
+    });
+  }
+  if (hasAll("tanaka", "nishinoya")) {
+    activeSynergies.push({
+      id: "karasuno-hype",
+      name: "Api Semangat Karasuno",
+      description: "Tanaka & Nishinoya: Energi pantang menyerah yang mengangkat moral tim!",
+      ovrBonus: 1.4,
+      involvedPlayerIds: ["tanaka", "nishinoya"],
+    });
+  }
+  if (hasAll("kageyama", "tsukishima")) {
+    activeSynergies.push({
+      id: "precision-and-wall",
+      name: "Presisi & Read Block",
+      description: "Kageyama & Tsukishima: Set tinggi tepat sasaran dan dinding blok cerdas!",
+      ovrBonus: 1.4,
+      involvedPlayerIds: ["kageyama", "tsukishima"],
+    });
+  }
+
+  const kitaPresent = draftedIds.has("kita");
+  const inarizakiPartners = players.filter(
+    (p) => p.tags.includes("inarizaki") && p.id !== "kita"
+  );
+  if (kitaPresent && inarizakiPartners.length >= 1) {
+    activeSynergies.push({
+      id: "kita-discipline",
+      name: "Disiplin Kapten Kita",
+      description: "Kita Shinsuke menjaga konsistensi penuh rekan Inarizaki!",
+      ovrBonus: 1.4,
+      involvedPlayerIds: ["kita", ...inarizakiPartners.map((p) => p.id)],
+    });
+  }
+
+  const karasunoSeniors = players.filter((p) =>
+    ["daichi", "sugawara", "asahi"].includes(p.id)
+  );
+  if (karasunoSeniors.length >= 2) {
+    activeSynergies.push({
+      id: "karasuno-seniors",
+      name: `Pilar Tahun Ketiga (${karasunoSeniors.length})`,
+      description: "Para senior Karasuno menjaga ketenangan di situasi genting!",
+      ovrBonus: karasunoSeniors.length >= 3 ? 2.0 : 1.4,
+      involvedPlayerIds: karasunoSeniors.map((p) => p.id),
+    });
+  }
+
+  const youthCampIds = ["kageyama", "atsumu", "sakusa", "komori", "hoshiumi", "chigaya"];
+  const youthCampPlayers = players.filter((p) => youthCampIds.includes(p.id));
+  if (youthCampPlayers.length >= 2) {
+    activeSynergies.push({
+      id: "all-japan-youth",
+      name: `Kamp Timnas U-19 (${youthCampPlayers.length})`,
+      description: "Para talenta undangan kamp nasional bermain dalam satu tim!",
+      ovrBonus: youthCampPlayers.length >= 3 ? 2.0 : 1.4,
+      involvedPlayerIds: youthCampPlayers.map((p) => p.id),
+    });
+  }
+
+  const littleGiants = players.filter((p) => p.tags.includes("little-giant"));
+  if (littleGiants.length >= 2) {
+    activeSynergies.push({
+      id: "little-giants",
+      name: "Duel Raksasa Kecil",
+      description: "Dua pemain bertubuh mungil menguasai pertarungan di atas net!",
+      ovrBonus: 1.6,
+      involvedPlayerIds: littleGiants.map((p) => p.id),
+    });
+  }
+
+  const eliteBlockers = players.filter((p) =>
+    ["tsukishima", "kuroo", "aone", "hirugami", "tendou"].includes(p.id)
+  );
+  if (eliteBlockers.length >= 2) {
+    activeSynergies.push({
+      id: "national-block-wall",
+      name: `Benteng Blok Nasional (${eliteBlockers.length})`,
+      description: "Kombinasi middle blocker elit yang menutup jalur spike lawan!",
+      ovrBonus: eliteBlockers.length >= 3 ? 2.0 : 1.4,
+      involvedPlayerIds: eliteBlockers.map((p) => p.id),
+    });
+  }
+
+  const jumpServers = players.filter((p) => p.tags.includes("jump-serve"));
+  if (jumpServers.length >= 3) {
+    activeSynergies.push({
+      id: "serve-barrage",
+      name: `Hujan Jump Serve (${jumpServers.length})`,
+      description: "Rotasi servis mematikan yang meruntuhkan penerimaan bola lawan!",
+      ovrBonus: 1.5,
+      involvedPlayerIds: jumpServers.map((p) => p.id),
+    });
+  }
+
+  const captains = players.filter((p) => p.tags.includes("captain"));
+  if (captains.length >= 3) {
+    activeSynergies.push({
+      id: "captains-aura",
+      name: `Karisma Para Kapten (${captains.length})`,
+      description: "Kepemimpinan kuat di setiap lini menjaga stabilitas poin deuce!",
+      ovrBonus: 1.4,
+      involvedPlayerIds: captains.map((p) => p.id),
+    });
+  }
 
   const top3Aces = players.filter((p) => p.tags.includes("top3-ace"));
   if (top3Aces.length >= 2) {
@@ -1655,11 +1830,13 @@ export function getPotentialResonances(
   const beforeMap = new Map(before.map((s) => [s.id, s]));
   const after = computeActiveSynergies([...currentPlayers, candidate]);
 
-  return after.filter((s) => {
-    if (!s.involvedPlayerIds.includes(candidate.id)) return false;
-    const prev = beforeMap.get(s.id);
-    return !prev || s.ovrBonus > prev.ovrBonus;
-  });
+  return after
+    .filter((s) => {
+      if (!s.involvedPlayerIds.includes(candidate.id)) return false;
+      const prev = beforeMap.get(s.id);
+      return !prev || s.ovrBonus > prev.ovrBonus;
+    })
+    .sort((a, b) => b.ovrBonus - a.ovrBonus);
 }
 
 export function evaluateTeam(

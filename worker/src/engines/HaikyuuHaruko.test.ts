@@ -87,6 +87,24 @@ describe("Haikyuu Haruko Draft Engine", () => {
     );
     expect(resonancesForHinata.map((r) => r.id)).toContain("freak-quick");
     expect(resonancesForHinata.map((r) => r.id)).toContain("karasuno-spirit");
+
+    const crossSchoolEval = evaluateTeam(
+      {
+        S: HAIKYUU_PLAYER_BY_ID.get("oikawa")!,
+        OP: HAIKYUU_PLAYER_BY_ID.get("ushijima")!,
+        OH1: HAIKYUU_PLAYER_BY_ID.get("bokuto")!,
+        OH2: HAIKYUU_PLAYER_BY_ID.get("hoshiumi")!,
+        MB1: HAIKYUU_PLAYER_BY_ID.get("kuroo")!,
+        MB2: HAIKYUU_PLAYER_BY_ID.get("hirugami")!,
+        L: HAIKYUU_PLAYER_BY_ID.get("komori")!,
+      },
+      "all-out-sync"
+    );
+    const crossIds = crossSchoolEval.activeSynergies.map((s) => s.id);
+    expect(crossIds).toContain("miyagi-dream");
+    expect(crossIds).toContain("tokyo-captains");
+    expect(crossIds).toContain("national-block-wall");
+    expect(crossIds).toContain("all-japan-youth");
   });
 
   it("rolls distinct school packs without repeating already-used packs", () => {
