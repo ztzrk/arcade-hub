@@ -1,0 +1,13 @@
+{
+  "name": "arcade-hub",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "pnpm --parallel --filter @arcade-hub/worker --filter @arcade-hub/client dev",
+    "dev:worker": "pnpm --filter @arcade-hub/worker dev",
+    "dev:client": "pnpm --filter @arcade-hub/client dev",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck"
+  }
+}

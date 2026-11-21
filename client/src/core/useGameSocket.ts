@@ -1,0 +1,307 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import type {
+  ClientMessage,
+  GameEvent,
+  PlayerSeat,
+  PublicRoomState,
+  ServerMessage,
+  TauntEmoteId,
+} from "@arcade-hub/shared";
+import { soundManager } from "../shared/audio";
+
+export interface FloatingTaunt {
+  uid: string;
+  fromPlayerId: string;
+  fromName: string;
+  emoteId: TauntEmoteId;
+}
+
+export type SocketStatus = "idle" | "connecting" | "connected" | "reconnecting" | "error";
+
+interface StoredSession {
+  playerToken: string;
+  playerName: string;
+}
+
+const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, "") ?? "";
+
+function getSessionKey(roomId: string): string {
+  return `arcade-hub:session:${roomId.toUpperCase()}`;
+}
+
+function loadSession(roomId: string): StoredSession | null {
+  try {
+    const raw = sessionStorage.getItem(getSessionKey(roomId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as StoredSession;
+    return parsed?.playerToken ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveSession(roomId: string, session: StoredSession): void {
+  try {
+    sessionStorage.setItem(getSessionKey(roomId), JSON.stringify(session));
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function buildWsUrl(roomId: string): string {
+  const cleanId = roomId.toUpperCase();
+  if (API_BASE) {
+    const wsBase = API_BASE.replace(/^http/i, "ws");
+    return `${wsBase}/api/ws/${cleanId}`;
+  }
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  return `${protocol}//${window.location.host}/api/ws/${cleanId}`;
+}
+
+export async function createRoom(): Promise<string> {
+  const res = await fetch(`${API_BASE}/api/rooms`, { method: "POST" });
+  if (!res.ok) {
+    throw new Error("Gagal membuat room baru.");
+  }
+  const data = (await res.json()) as { roomId: string };
+  return data.roomId;
+}
+
+export function useGameSocket() {
+  const [status, setStatus] = useState<SocketStatus>("idle");
+  const [playerId, setPlayerId] = useState<string | null>(null);
+  const [seat, setSeat] = useState<PlayerSeat | null>(null);
+  const [room, setRoom] = useState<PublicRoomState | null>(null);
+  const [gameView, setGameView] = useState<unknown | null>(null);
+  const [lastEvents, setLastEvents] = useState<GameEvent[]>([]);
+  const [taunts, setTaunts] = useState<FloatingTaunt[]>([]);
+  const [errorBanner, setErrorBanner] = useState<string | null>(null);
+
+  const wsRef = useRef<WebSocket | null>(null);
+  const activeCredsRef = useRef<{ roomId: string; playerName: string } | null>(null);
+  const reconnectAttemptRef = useRef(0);
+  const reconnectTimerRef = useRef<number | null>(null);
+  const pingTimerRef = useRef<number | null>(null);
+  const intentionalCloseRef = useRef(false);
+
+  const clearTimers = useCallback(() => {
+    if (reconnectTimerRef.current !== null) {
+      window.clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
+    if (pingTimerRef.current !== null) {
+      window.clearInterval(pingTimerRef.current);
+      pingTimerRef.current = null;
+    }
+  }, []);
+
+  const sendMessage = useCallback((msg: ClientMessage) => {
+    const ws = wsRef.current;
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify(msg));
+    }
+  }, []);
+
+  const connectInternal = useCallback(
+    (roomId: string, playerName: string, isReconnect = false) => {
+      clearTimers();
+      if (wsRef.current) {
+        intentionalCloseRef.current = true;
+        wsRef.current.close();
+      }
+
+      const normalizedRoom = roomId.trim().toUpperCase();
+      const cleanName = playerName.trim().slice(0, 24) || "Player";
+      activeCredsRef.current = { roomId: normalizedRoom, playerName: cleanName };
+      intentionalCloseRef.current = false;
+
+      setStatus(isReconnect ? "reconnecting" : "connecting");
+      setErrorBanner(null);
+
+      const ws = new WebSocket(buildWsUrl(normalizedRoom));
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        reconnectAttemptRef.current = 0;
+        setStatus("connected");
+
+        const saved = loadSession(normalizedRoom);
+        ws.send(
+          JSON.stringify({
+            type: "JOIN_ROOM",
+            roomId: normalizedRoom,
+            playerName: cleanName,
+            playerToken: saved?.playerToken,
+          } satisfies ClientMessage)
+        );
+
+        pingTimerRef.current = window.setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: "PING", ts: Date.now() } satisfies ClientMessage));
+          }
+        }, 25000);
+      };
+
+      ws.onmessage = (event) => {
+        let msg: ServerMessage;
+        try {
+          msg = JSON.parse(String(event.data)) as ServerMessage;
+        } catch {
+          return;
+        }
+
+        switch (msg.type) {
+          case "SESSION_ASSIGNED": {
+            setPlayerId(msg.playerId);
+            setSeat(msg.seat);
+            saveSession(normalizedRoom, {
+              playerToken: msg.playerToken,
+              playerName: cleanName,
+            });
+            return;
+          }
+          case "ROOM_STATE": {
+            setRoom(msg.room);
+            if (msg.room.phase === "LOBBY") {
+              setGameView(null);
+            }
+            return;
+          }
+          case "GAME_STATE": {
+            setGameView(msg.view);
+            setLastEvents(msg.events);
+            return;
+          }
+          case "TAUNT_RECEIVED": {
+            soundManager.play("taunt");
+            const uid = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+            setTaunts((prev) => [
+              ...prev.slice(-4),
+              {
+                uid,
+                fromPlayerId: msg.fromPlayerId,
+                fromName: msg.fromName,
+                emoteId: msg.emoteId,
+              },
+            ]);
+            window.setTimeout(() => {
+              setTaunts((prev) => prev.filter((item) => item.uid !== uid));
+            }, 2600);
+            return;
+          }
+          case "ERROR": {
+            setErrorBanner(msg.message);
+            if (msg.code === "ROOM_FULL") {
+              intentionalCloseRef.current = true;
+              setStatus("error");
+            }
+            window.setTimeout(() => {
+              setErrorBanner((cur) => (cur === msg.message ? null : cur));
+            }, 4000);
+            return;
+          }
+          case "PONG":
+            return;
+        }
+      };
+
+      ws.onclose = () => {
+        clearTimers();
+        if (intentionalCloseRef.current) return;
+
+        const creds = activeCredsRef.current;
+        if (!creds) {
+          setStatus("idle");
+          return;
+        }
+
+        const attempt = reconnectAttemptRef.current;
+        if (attempt >= 8) {
+          setStatus("error");
+          setErrorBanner("Koneksi terputus. Silakan muat ulang halaman.");
+          return;
+        }
+
+        const delayMs = Math.min(8000, 600 * Math.pow(1.6, attempt));
+        reconnectAttemptRef.current = attempt + 1;
+        setStatus("reconnecting");
+        reconnectTimerRef.current = window.setTimeout(() => {
+          connectInternal(creds.roomId, creds.playerName, true);
+        }, delayMs);
+      };
+
+      ws.onerror = () => {
+        // onclose handles retry
+      };
+    },
+    [clearTimers]
+  );
+
+  const joinRoom = useCallback(
+    (roomId: string, playerName: string) => {
+      soundManager.unlock();
+      connectInternal(roomId, playerName, false);
+    },
+    [connectInternal]
+  );
+
+  const leaveRoom = useCallback(() => {
+    intentionalCloseRef.current = true;
+    activeCredsRef.current = null;
+    clearTimers();
+    wsRef.current?.close();
+    wsRef.current = null;
+    setStatus("idle");
+    setRoom(null);
+    setGameView(null);
+    setPlayerId(null);
+    setSeat(null);
+  }, [clearTimers]);
+
+  useEffect(() => {
+    const syncOnFocus = () => {
+      if (document.visibilityState === "hidden") return;
+      const creds = activeCredsRef.current;
+      if (!creds) return;
+
+      const ws = wsRef.current;
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "REQUEST_SYNC" } satisfies ClientMessage));
+      } else if (!intentionalCloseRef.current) {
+        reconnectAttemptRef.current = 0;
+        connectInternal(creds.roomId, creds.playerName, true);
+      }
+    };
+
+    window.addEventListener("focus", syncOnFocus);
+    document.addEventListener("visibilitychange", syncOnFocus);
+
+    return () => {
+      window.removeEventListener("focus", syncOnFocus);
+      document.removeEventListener("visibilitychange", syncOnFocus);
+      intentionalCloseRef.current = true;
+      clearTimers();
+      wsRef.current?.close();
+    };
+  }, [clearTimers, connectInternal]);
+
+  return {
+    status,
+    playerId,
+    seat,
+    room,
+    gameView,
+    lastEvents,
+    taunts,
+    errorBanner,
+    joinRoom,
+    leaveRoom,
+    setStake: (stakeText: string) => sendMessage({ type: "SET_STAKE", stakeText }),
+    selectGame: (gameId: string) => sendMessage({ type: "SELECT_GAME", gameId }),
+    setReady: (ready: boolean) => sendMessage({ type: "SET_READY", ready }),
+    startMatch: () => sendMessage({ type: "START_MATCH" }),
+    returnToLobby: () => sendMessage({ type: "RETURN_TO_LOBBY" }),
+    sendGameAction: (action: unknown) => sendMessage({ type: "GAME_ACTION", action }),
+    sendTaunt: (emoteId: TauntEmoteId) => sendMessage({ type: "SEND_TAUNT", emoteId }),
+  };
+}

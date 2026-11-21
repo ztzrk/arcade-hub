@@ -1,1 +1,17 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+.wrangler/
+
+# Environment & secrets
+.env
+.env.local
+.dev.vars
+
+# TypeScript incremental cache
+*.tsbuildinfo
+
+# Agent scratch/plan
 agents/gemini-code-1795270551383.md
