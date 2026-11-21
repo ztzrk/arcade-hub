@@ -154,7 +154,9 @@ export interface TebakKataView {
   targetLetterCount: number;
   myGuesses: string[];
   hintsUsed: number;
-  maxHints: number;
+  canRevealLetter: boolean;
+  myWordLettersTotal: number;
+  myWordLettersRevealed: number;
   opponentProgress: {
     guessCount: number;
     hintsUsed: number;

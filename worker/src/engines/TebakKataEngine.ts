@@ -11,7 +11,6 @@ const TARGET_WINS = 2;
 const MIN_LETTERS = 2;
 const MAX_WORD_LENGTH = 24;
 const MAX_CLUE_LENGTH = 40;
-const MAX_HINTS_CAP = 4;
 
 export interface TebakKataState {
   playerIds: [string, string];
@@ -43,13 +42,6 @@ function countLetters(phrase: string): number {
     if (ch !== " ") count += 1;
   }
   return count;
-}
-
-function computeMaxHints(secretWord: string | null): number {
-  if (!secretWord) return 0;
-  const letters = countLetters(secretWord);
-  if (letters < MIN_LETTERS) return 0;
-  return Math.max(1, Math.min(MAX_HINTS_CAP, Math.floor(letters / 2)));
 }
 
 function validateSecretWord(raw: string): string {
@@ -186,6 +178,7 @@ export class TebakKataEngine
     const myRevealed = state.revealedIndices[playerId] ?? [];
     const opponentRevealed = state.revealedIndices[opponentId] ?? [];
     const canShowSlots = state.phase !== "SETUP_WORDS" && opponentWord !== null;
+    const myWordLettersTotal = myWord ? countLetters(myWord) : 0;
 
     return {
       phase: state.phase,
@@ -204,7 +197,12 @@ export class TebakKataEngine
       targetLetterCount: canShowSlots ? countLetters(opponentWord) : 0,
       myGuesses: [...(state.guesses[playerId] ?? [])],
       hintsUsed: myRevealed.length,
-      maxHints: canShowSlots ? computeMaxHints(opponentWord) : 0,
+      canRevealLetter:
+        state.phase === "GUESSING" &&
+        myWord !== null &&
+        opponentRevealed.length < myWordLettersTotal,
+      myWordLettersTotal,
+      myWordLettersRevealed: opponentRevealed.length,
       opponentProgress: {
         guessCount: (state.guesses[opponentId] ?? []).length,
         hintsUsed: opponentRevealed.length,
@@ -365,27 +363,23 @@ export class TebakKataEngine
       throw new EngineError("INVALID_ACTION", "Bantuan huruf hanya bisa dibuka saat menebak.");
     }
 
-    const targetWord = state.words[opponentId];
-    if (!targetWord) {
-      throw new EngineError("INVALID_ACTION", "Kata lawan belum tersedia.");
+    // The word owner (playerId) reveals 1 random letter of their own word to the guesser (opponentId).
+    const myWord = state.words[playerId];
+    if (!myWord) {
+      throw new EngineError("INVALID_ACTION", "Kata rahasiamu belum tersedia.");
     }
 
-    const revealed = state.revealedIndices[playerId] ?? [];
-    const maxHints = computeMaxHints(targetWord);
-    if (revealed.length >= maxHints) {
-      throw new EngineError("INVALID_ACTION", "Batas bantuan huruf sudah habis.");
-    }
-
-    const revealedSet = new Set(revealed);
+    const revealedToOpponent = state.revealedIndices[opponentId] ?? [];
+    const revealedSet = new Set(revealedToOpponent);
     const availableIndices: number[] = [];
-    for (let i = 0; i < targetWord.length; i++) {
-      if (targetWord[i] !== " " && !revealedSet.has(i)) {
+    for (let i = 0; i < myWord.length; i++) {
+      if (myWord[i] !== " " && !revealedSet.has(i)) {
         availableIndices.push(i);
       }
     }
 
     if (availableIndices.length === 0) {
-      throw new EngineError("INVALID_ACTION", "Semua huruf sudah terbuka.");
+      throw new EngineError("INVALID_ACTION", "Semua huruf katamu sudah terbuka.");
     }
 
     const pick = Math.min(
@@ -398,13 +392,18 @@ export class TebakKataEngine
       ...state,
       revealedIndices: {
         ...state.revealedIndices,
-        [playerId]: [...revealed, chosenIndex],
+        [opponentId]: [...revealedToOpponent, chosenIndex],
       },
     };
 
     return {
       newState,
-      events: [{ type: "LETTER_REVEALED", payload: { playerId } }],
+      events: [
+        {
+          type: "LETTER_REVEALED",
+          payload: { ownerId: playerId, guesserId: opponentId },
+        },
+      ],
     };
   }
 

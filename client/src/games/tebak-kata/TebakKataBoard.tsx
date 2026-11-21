@@ -121,8 +121,12 @@ export function TebakKataBoard({
 
   useEffect(() => {
     for (const ev of lastEvents) {
-      if (ev.type === "LETTER_REVEALED" && ev.payload?.playerId === playerId) {
-        soundManager.play("reveal");
+      if (ev.type === "LETTER_REVEALED") {
+        if (ev.payload?.guesserId === playerId) {
+          soundManager.play("reveal");
+        } else if (ev.payload?.ownerId === playerId) {
+          soundManager.play("click");
+        }
       }
       if (ev.type === "WRONG_GUESS" && ev.payload?.playerId === playerId) {
         soundManager.play("wrong");
@@ -152,7 +156,6 @@ export function TebakKataBoard({
 
   const previewSlots = buildPreviewSlots(wordDraft);
   const previewLettersCount = previewSlots.filter((s) => s.kind === "blank").length;
-  const hintsRemaining = Math.max(0, view.maxHints - view.hintsUsed);
   const winner = room.players.find((p) => p.id === view.winnerId);
   const bothReady = room.players.length === 2 && room.players.every((p) => p.ready);
 
@@ -407,28 +410,19 @@ export function TebakKataBoard({
               </motion.form>
 
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <button
-                  type="button"
-                  onClick={() => onAction({ type: "REVEAL_LETTER" })}
-                  disabled={hintsRemaining === 0}
-                  className="flex items-center gap-2 rounded-lg border border-[#d4a24c]/40 bg-[#1e1d14] px-3.5 py-2 text-xs font-medium text-[#f3dfb8] hover:bg-[#2a2719] disabled:cursor-not-allowed disabled:opacity-40 transition-colors cursor-pointer"
-                >
-                  <Lightbulb className="h-3.5 w-3.5 text-[#d4a24c]" />
-                  Perlihatkan 1 Huruf
-                  <span className="font-mono-tabular rounded bg-white/10 px-1.5 py-0.5 text-[11px]">
-                    {hintsRemaining}/{view.maxHints}
-                  </span>
-                </button>
-
                 {localError ? (
                   <span className="text-xs text-[#f5b4ae]">{localError}</span>
                 ) : (
                   <span className="text-xs text-[#8a998d]">
-                    {view.myGuesses.length > 0
-                      ? `${view.myGuesses.length}x percobaan`
+                    {view.hintsUsed > 0
+                      ? `${view.hintsUsed}/${view.targetLetterCount} huruf dibuka oleh ${opponent?.name ?? "lawan"}`
                       : "Siapa cepat menebak, dia menang!"}
                   </span>
                 )}
+
+                <span className="text-xs text-[#8a998d]">
+                  {view.myGuesses.length > 0 ? `${view.myGuesses.length}x percobaan` : ""}
+                </span>
               </div>
 
               {view.myGuesses.length > 0 && (
@@ -575,35 +569,72 @@ export function TebakKataBoard({
         )}
       </div>
 
-      {/* Bottom Live Status Strip during GUESSING */}
+      {/* Bottom Panel: Own Word + Opponent Progress + Reveal 1 Letter Control */}
       {view.phase === "GUESSING" && view.myWord && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#171815] px-4 py-3 text-xs">
-          <div className="flex items-center gap-2.5">
-            <span className="text-[#9c9689]">Kata milikmu:</span>
-            <span className="font-mono-tabular font-semibold tracking-wider text-[#ebe5d8]">
-              {showMyLockedWord
-                ? view.myWord
-                : view.myWord.replace(/[^ ]/g, "•")}
-            </span>
-            <button
-              type="button"
-              onClick={() => setShowMyLockedWord((s) => !s)}
-              className="text-[#d4a24c] hover:underline cursor-pointer"
-            >
-              {showMyLockedWord ? "Sembunyikan" : "Lihat"}
-            </button>
+        <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-[#171815] px-4 py-3.5 text-xs sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[#9c9689]">Kata milikmu:</span>
+              <span className="font-mono-tabular flex flex-wrap items-center gap-0.5 font-semibold tracking-wider">
+                {view.myWord.split("").map((ch, idx) => {
+                  if (ch === " ") {
+                    return <span key={idx} className="inline-block w-2" />;
+                  }
+                  const isOpenedForOpponent =
+                    view.opponentProgress.revealedIndices.includes(idx);
+                  const displayChar =
+                    isOpenedForOpponent || showMyLockedWord ? ch : "•";
+                  return (
+                    <span
+                      key={idx}
+                      className={`inline-flex h-6 min-w-5 items-center justify-center rounded px-1 ${
+                        isOpenedForOpponent
+                          ? "border border-[#d4a24c]/50 bg-[#252318] text-[#f3dfb8]"
+                          : "bg-white/5 text-[#ebe5d8]"
+                      }`}
+                      title={
+                        isOpenedForOpponent
+                          ? "Sudah terbuka untuk lawan"
+                          : "Masih rahasia"
+                      }
+                    >
+                      {displayChar}
+                    </span>
+                  );
+                })}
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowMyLockedWord((s) => !s)}
+                className="text-[#d4a24c] hover:underline cursor-pointer"
+              >
+                {showMyLockedWord ? "Sembunyikan" : "Intip"}
+              </button>
+            </div>
+
+            <div className="text-[#a9b5ab]">
+              Progres {opponent?.name ?? "lawan"}:{" "}
+              <span className="font-mono-tabular text-[#ebe5d8]">
+                {view.opponentProgress.guessCount}x tebak
+              </span>{" "}
+              •{" "}
+              <span className="font-mono-tabular text-[#d4a24c]">
+                {view.myWordLettersRevealed}/{view.myWordLettersTotal} huruf terbuka
+              </span>
+            </div>
           </div>
 
-          <div className="text-[#a9b5ab]">
-            Progres {opponent?.name ?? "lawan"}:{" "}
-            <span className="font-mono-tabular text-[#ebe5d8]">
-              {view.opponentProgress.guessCount}x tebak
-            </span>{" "}
-            •{" "}
-            <span className="font-mono-tabular text-[#d4a24c]">
-              {view.opponentProgress.hintsUsed} huruf terbuka
-            </span>
-          </div>
+          <button
+            type="button"
+            onClick={() => onAction({ type: "REVEAL_LETTER" })}
+            disabled={!view.canRevealLetter}
+            className="flex shrink-0 items-center justify-center gap-2 rounded-lg border border-[#d4a24c]/45 bg-[#221f14] px-4 py-2.5 text-xs font-semibold text-[#f3dfb8] hover:bg-[#2d291a] disabled:cursor-not-allowed disabled:opacity-40 transition-colors cursor-pointer"
+          >
+            <Lightbulb className="h-3.5 w-3.5 text-[#d4a24c]" />
+            {view.canRevealLetter
+              ? `Perlihatkan 1 Huruf ke ${opponent?.name ?? "Lawan"}`
+              : "Semua Huruf Terbuka"}
+          </button>
         </div>
       )}
     </div>

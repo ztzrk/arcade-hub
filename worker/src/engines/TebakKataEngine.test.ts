@@ -44,7 +44,8 @@ describe("TebakKataEngine", () => {
     expect(p1View.opponentSlots[4]).toEqual({ kind: "space" });
     expect(p1View.targetWordCount).toBe(2);
     expect(p1View.targetLetterCount).toBe(10);
-    expect(p1View.maxHints).toBe(4);
+    expect(p1View.canRevealLetter).toBe(true);
+    expect(p1View.myWordLettersTotal).toBe(8);
     expect(JSON.stringify(p1View)).not.toContain("NASI GORENG");
   });
 
@@ -79,7 +80,7 @@ describe("TebakKataEngine", () => {
     ).toThrow(EngineError);
   });
 
-  it("reveals one unrevealed non-space letter per hint up to maxHints", () => {
+  it("allows word owner to reveal unlimited random letters of their own word to opponent until all are open", () => {
     const engine = makeDeterministicEngine([0.0, 0.5]);
     let state = engine.initState(["p1", "p2"]);
 
@@ -89,32 +90,48 @@ describe("TebakKataEngine", () => {
     }).newState;
     state = engine.handleAction(state, "p2", {
       type: "SUBMIT_WORD",
-      word: "teh tarik",
+      word: "kapal api",
     }).newState;
 
-    // "TEH TARIK" -> 8 letters -> maxHints = 4
-    let res = engine.handleAction(state, "p1", { type: "REVEAL_LETTER" });
+    // p2 (word owner of "KAPAL API", 8 letters) reveals 1 random letter to p1
+    let res = engine.handleAction(state, "p2", { type: "REVEAL_LETTER" });
     state = res.newState;
     expect(res.events).toEqual([
-      { type: "LETTER_REVEALED", payload: { playerId: "p1" } },
+      {
+        type: "LETTER_REVEALED",
+        payload: { ownerId: "p2", guesserId: "p1" },
+      },
     ]);
 
     const p1View = engine.getViewForPlayer(state, "p1");
     expect(p1View.hintsUsed).toBe(1);
-    expect(p1View.opponentSlots[0]).toEqual({ kind: "letter", char: "T" });
+    expect(p1View.opponentSlots[0]).toEqual({ kind: "letter", char: "K" });
 
-    // Opponent sees that p1 revealed 1 letter
+    // p2 sees that 1/8 letters of p2's word is revealed to p1
     const p2View = engine.getViewForPlayer(state, "p2");
+    expect(p2View.myWordLettersRevealed).toBe(1);
+    expect(p2View.myWordLettersTotal).toBe(8);
+    expect(p2View.canRevealLetter).toBe(true);
     expect(p2View.opponentProgress.hintsUsed).toBe(1);
     expect(p2View.opponentProgress.revealedIndices).toEqual([0]);
 
-    // Exhaust remaining hints (p1 can only reveal 4 total on "TEH TARIK")
-    state = engine.handleAction(state, "p1", { type: "REVEAL_LETTER" }).newState;
-    state = engine.handleAction(state, "p1", { type: "REVEAL_LETTER" }).newState;
-    state = engine.handleAction(state, "p1", { type: "REVEAL_LETTER" }).newState;
+    // p2 can continue revealing all remaining 7 letters with no limit
+    for (let i = 0; i < 7; i++) {
+      state = engine.handleAction(state, "p2", { type: "REVEAL_LETTER" }).newState;
+    }
 
+    const p2ViewAfterAll = engine.getViewForPlayer(state, "p2");
+    expect(p2ViewAfterAll.canRevealLetter).toBe(false);
+    expect(p2ViewAfterAll.myWordLettersRevealed).toBe(8);
+
+    const p1ViewAfterAll = engine.getViewForPlayer(state, "p1");
+    expect(
+      p1ViewAfterAll.opponentSlots.filter((s) => s.kind === "blank")
+    ).toHaveLength(0);
+
+    // Once all letters are revealed, another REVEAL_LETTER throws
     expect(() =>
-      engine.handleAction(state, "p1", { type: "REVEAL_LETTER" })
+      engine.handleAction(state, "p2", { type: "REVEAL_LETTER" })
     ).toThrow(EngineError);
   });
 
