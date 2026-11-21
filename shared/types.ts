@@ -1,3 +1,5 @@
+export * from "./tebakKarakterRoster.ts";
+
 export type PlayerSeat = 0 | 1;
 
 export type RoomPhase = "LOBBY" | "IN_GAME" | "MATCH_OVER";
@@ -164,6 +166,71 @@ export interface TebakKataView {
   };
   readyForNextRound: Record<string, boolean>;
   lastRoundSummary: TebakKataRoundSummary | null;
+  winnerId: string | null;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Game #3: Tebak Karakter (1v1 Guess Who?)                                  */
+/* -------------------------------------------------------------------------- */
+
+export type TebakKarakterPhase =
+  | "SELECT_CHARACTER"
+  | "PLAYING"
+  | "ROUND_END"
+  | "MATCH_END";
+
+export type TebakKarakterTurnStage = "ASK_OR_GUESS" | "ANSWER_QUESTION";
+
+export type TebakKarakterAnswer = "YES" | "NO";
+
+export type TebakKarakterAction =
+  | { type: "SELECT_CHARACTER"; characterId: string }
+  | { type: "ASK_QUESTION"; question: string }
+  | { type: "ANSWER_QUESTION"; answer: TebakKarakterAnswer }
+  | { type: "TOGGLE_ELIMINATE"; characterId: string }
+  | { type: "GUESS_CHARACTER"; characterId: string }
+  | { type: "NEXT_ROUND" };
+
+export interface TebakKarakterPendingQuestion {
+  id: number;
+  askerId: string;
+  question: string;
+}
+
+export interface TebakKarakterQA {
+  id: number;
+  askerId: string;
+  answererId: string;
+  question: string;
+  answer: TebakKarakterAnswer;
+}
+
+export interface TebakKarakterRoundSummary {
+  roundNumber: number;
+  winnerId: string;
+  guesserId: string;
+  guessedCharacterId: string;
+  reason: "CORRECT_GUESS" | "WRONG_GUESS";
+  secretCharacters: Record<string, string>;
+  questionCount: number;
+}
+
+export interface TebakKarakterView {
+  phase: TebakKarakterPhase;
+  roundNumber: number;
+  targetWins: number;
+  scores: Record<string, number>;
+  mySecretCharacterId: string | null;
+  myCharacterSelected: boolean;
+  opponentCharacterSelected: boolean;
+  currentTurnPlayerId: string;
+  turnStage: TebakKarakterTurnStage;
+  pendingQuestion: TebakKarakterPendingQuestion | null;
+  qaHistory: TebakKarakterQA[];
+  myEliminatedIds: string[];
+  opponentRemainingCount: number;
+  readyForNextRound: Record<string, boolean>;
+  lastRoundSummary: TebakKarakterRoundSummary | null;
   winnerId: string | null;
 }
 

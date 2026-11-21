@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 import type { GameMeta } from "@arcade-hub/shared";
 import { LiarsDeckBoard, type GameBoardProps } from "./liars-deck/LiarsDeckBoard";
+import { TebakKarakterBoard } from "./tebak-karakter/TebakKarakterBoard";
 import { TebakKataBoard } from "./tebak-kata/TebakKataBoard";
 
 export interface RegisteredGame extends GameMeta {
@@ -23,6 +24,14 @@ export const REGISTERED_GAMES: RegisteredGame[] = [
     minPlayers: 2,
     maxPlayers: 2,
     Component: TebakKataBoard,
+  },
+  {
+    id: "tebak-karakter",
+    name: "Tebak Karakter",
+    tagline: "Pilih karakter rahasia, lempar pertanyaan Ya/Tidak, dan tebak pilihan lawan.",
+    minPlayers: 2,
+    maxPlayers: 2,
+    Component: TebakKarakterBoard,
   },
 ];
 
