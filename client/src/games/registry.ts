@@ -28,7 +28,7 @@ export const REGISTERED_GAMES: RegisteredGame[] = [
   {
     id: "tebak-karakter",
     name: "Tebak Karakter",
-    tagline: "Pilih karakter rahasia, lempar pertanyaan Ya/Tidak, dan tebak pilihan lawan.",
+    tagline: "Pilih karakter rahasia, ngobrol bebas untuk eliminasi papan, lalu kunci tebakan bersama.",
     minPlayers: 2,
     maxPlayers: 2,
     Component: TebakKarakterBoard,

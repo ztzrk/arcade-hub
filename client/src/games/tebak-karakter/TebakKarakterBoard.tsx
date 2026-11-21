@@ -5,11 +5,8 @@ import {
   Crosshair,
   Eye,
   EyeOff,
-  HelpCircle,
   Lock,
-  MessageSquareText,
   RotateCcw,
-  Send,
   Sparkles,
   X,
 } from "lucide-react";
@@ -22,14 +19,6 @@ import {
 import { soundManager } from "../../shared/audio";
 import type { GameBoardProps } from "../liars-deck/LiarsDeckBoard";
 import { CharacterPortrait } from "./CharacterPortrait";
-
-const QUICK_QUESTION_IDEAS = [
-  "Pakai kacamata?",
-  "Pakai topi atau penutup kepala?",
-  "Punya kumis atau jenggot?",
-  "Rambutnya panjang?",
-  "Pakai anting?",
-];
 
 export function TebakKarakterBoard({
   view: rawView,
@@ -44,7 +33,6 @@ export function TebakKarakterBoard({
   const view = rawView as TebakKarakterView | null;
 
   const [draftSecretId, setDraftSecretId] = useState<string | null>(null);
-  const [questionDraft, setQuestionDraft] = useState("");
   const [guessMode, setGuessMode] = useState(false);
   const [confirmGuessChar, setConfirmGuessChar] =
     useState<TebakKarakterCharacter | null>(null);
@@ -53,7 +41,6 @@ export function TebakKarakterBoard({
 
   useEffect(() => {
     setDraftSecretId(null);
-    setQuestionDraft("");
     setGuessMode(false);
     setConfirmGuessChar(null);
     setLocalError(null);
@@ -64,19 +51,25 @@ export function TebakKarakterBoard({
     for (const ev of lastEvents) {
       if (ev.type === "BOTH_CHARACTERS_READY" || ev.type === "ROUND_STARTED") {
         soundManager.play("reveal");
-      } else if (ev.type === "QUESTION_ASKED" || ev.type === "QUESTION_ANSWERED") {
+      } else if (ev.type === "GUESS_LOCKED") {
         soundManager.play("card");
-      } else if (ev.type === "GUESS_WRONG") {
-        soundManager.play("wrong");
-      } else if (
-        ev.type === "GUESS_CORRECT" ||
-        ev.type === "ROUND_WON" ||
-        ev.type === "MATCH_WON"
-      ) {
+      } else if (ev.type === "ROUND_RESOLVED") {
+        const outcome = ev.payload?.outcome;
+        const roundWinnerId = ev.payload?.winnerId;
+        if (outcome === "DRAW_BOTH_WRONG") {
+          soundManager.play("wrong");
+        } else if (outcome === "DRAW_BOTH_CORRECT") {
+          soundManager.play("reveal");
+        } else if (roundWinnerId && roundWinnerId === playerId) {
+          soundManager.play("win");
+        } else {
+          soundManager.play("wrong");
+        }
+      } else if (ev.type === "MATCH_WON") {
         soundManager.play("win");
       }
     }
-  }, [lastEvents]);
+  }, [lastEvents, playerId]);
 
   const me = room.players.find((p) => p.id === playerId) ?? null;
   const opponent = room.players.find((p) => p.id !== playerId) ?? null;
@@ -88,6 +81,10 @@ export function TebakKarakterBoard({
 
   const mySecretChar = view?.mySecretCharacterId
     ? TEBAK_KARAKTER_BY_ID.get(view.mySecretCharacterId) ?? null
+    : null;
+
+  const myGuessChar = view?.myGuessCharacterId
+    ? TEBAK_KARAKTER_BY_ID.get(view.myGuessCharacterId) ?? null
     : null;
 
   if (!view) {
@@ -104,19 +101,8 @@ export function TebakKarakterBoard({
   const bothReady =
     room.players.length === 2 && room.players.every((p) => p.ready);
 
-  const isMyTurn = Boolean(playerId && view.currentTurnPlayerId === playerId);
-  const canAskOrGuess =
-    view.phase === "PLAYING" && isMyTurn && view.turnStage === "ASK_OR_GUESS";
-  const isWaitingMyAnswer =
-    view.phase === "PLAYING" &&
-    view.turnStage === "ANSWER_QUESTION" &&
-    Boolean(view.pendingQuestion && view.pendingQuestion.askerId !== playerId);
-  const isWaitingOpponentAnswer =
-    view.phase === "PLAYING" &&
-    view.turnStage === "ANSWER_QUESTION" &&
-    Boolean(view.pendingQuestion && view.pendingQuestion.askerId === playerId);
-
   const remainingForMe = TEBAK_KARAKTER_ROSTER.length - eliminatedSet.size;
+  const canGuessNow = view.phase === "PLAYING" && !view.myGuessSubmitted;
 
   const handleConfirmSecret = () => {
     if (!draftSecretId) {
@@ -126,21 +112,6 @@ export function TebakKarakterBoard({
     setLocalError(null);
     soundManager.play("click");
     onAction({ type: "SELECT_CHARACTER", characterId: draftSecretId });
-  };
-
-  const handleSubmitQuestion = (e: React.FormEvent) => {
-    e.preventDefault();
-    const clean = questionDraft.trim().replace(/\s+/g, " ");
-    if (clean.length < 2) {
-      setLocalError("Pertanyaan minimal 2 karakter.");
-      return;
-    }
-    setLocalError(null);
-    setGuessMode(false);
-    setConfirmGuessChar(null);
-    soundManager.play("click");
-    onAction({ type: "ASK_QUESTION", question: clean });
-    setQuestionDraft("");
   };
 
   const handleCardClick = (character: TebakKarakterCharacter) => {
@@ -154,7 +125,7 @@ export function TebakKarakterBoard({
 
     if (view.phase !== "PLAYING") return;
 
-    if (guessMode && canAskOrGuess) {
+    if (guessMode && canGuessNow) {
       if (eliminatedSet.has(character.id)) return;
       soundManager.play("click");
       setConfirmGuessChar(character);
@@ -171,6 +142,33 @@ export function TebakKarakterBoard({
     onAction({ type: "GUESS_CHARACTER", characterId: confirmGuessChar.id });
     setConfirmGuessChar(null);
     setGuessMode(false);
+  };
+
+  const renderRoundOutcomeTitle = () => {
+    const summary = view.lastRoundSummary;
+    if (!summary) return "";
+    if (summary.outcome === "DRAW_BOTH_CORRECT") {
+      return "Seri! Keduanya Benar";
+    }
+    if (summary.outcome === "DRAW_BOTH_WRONG") {
+      return "Seri! Keduanya Salah";
+    }
+    return summary.winnerId === playerId
+      ? "Kamu Menang Ronde Ini!"
+      : `${opponent?.name ?? "Lawan"} Menang Ronde Ini!`;
+  };
+
+  const renderRoundOutcomeDesc = () => {
+    const summary = view.lastRoundSummary;
+    if (!summary) return "";
+    if (summary.outcome === "DRAW_BOTH_CORRECT") {
+      return "Kamu dan pasanganmu sama-sama menebak dengan tepat — tidak ada poin.";
+    }
+    if (summary.outcome === "DRAW_BOTH_WRONG") {
+      return "Kedua tebakan meleset — tidak ada poin, lanjut ke ronde berikutnya.";
+    }
+    const roundWinner = room.players.find((p) => p.id === summary.winnerId);
+    return `${roundWinner?.name ?? "Pemain"} menebak dengan benar sementara tebakan lawan meleset.`;
   };
 
   return (
@@ -327,10 +325,9 @@ export function TebakKarakterBoard({
           </div>
         )}
 
-        {/* PHASE 2: PLAYING */}
+        {/* PHASE 2: PLAYING (Free Eliminations + Simultaneous Guess Lock) */}
         {view.phase === "PLAYING" && (
           <div className="space-y-4">
-            {/* Secret Character + Turn Prompt Row */}
             <div className="grid gap-3 lg:grid-cols-[240px_1fr]">
               {/* My Secret Character Card */}
               <div className="flex items-center justify-between gap-3 rounded-xl border border-[#d4a24c]/30 bg-[#121915]/90 p-3">
@@ -356,7 +353,11 @@ export function TebakKarakterBoard({
                 <button
                   type="button"
                   onClick={() => setHideMySecret((s) => !s)}
-                  title={hideMySecret ? "Tampilkan karaktermu" : "Sembunyikan karaktermu"}
+                  title={
+                    hideMySecret
+                      ? "Tampilkan karaktermu"
+                      : "Sembunyikan karaktermu"
+                  }
                   className="rounded-lg border border-white/12 bg-white/5 p-2 text-[#cfc8ba] hover:bg-white/10 cursor-pointer"
                 >
                   {hideMySecret ? (
@@ -367,75 +368,61 @@ export function TebakKarakterBoard({
                 </button>
               </div>
 
-              {/* Action / Turn Panel */}
-              <div className="rounded-xl border border-white/12 bg-[#121915]/90 p-3.5 sm:p-4">
-                {isWaitingMyAnswer && view.pendingQuestion && (
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="space-y-1">
-                      <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#d4a24c]">
-                        <HelpCircle className="h-3.5 w-3.5" />
-                        {opponent?.name ?? "Lawan"} bertanya padamu:
-                      </p>
-                      <p className="font-display text-lg text-[#f3dfb8]">
-                        &ldquo;{view.pendingQuestion.question}&rdquo;
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          soundManager.play("click");
-                          onAction({ type: "ANSWER_QUESTION", answer: "YES" });
-                        }}
-                        className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-emerald-500 transition-colors cursor-pointer"
-                      >
-                        <Check className="h-4 w-4" />
-                        YA
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          soundManager.play("click");
-                          onAction({ type: "ANSWER_QUESTION", answer: "NO" });
-                        }}
-                        className="flex items-center gap-1.5 rounded-xl bg-[#d9483b] px-5 py-2.5 text-xs font-bold text-white hover:bg-[#e55a4d] transition-colors cursor-pointer"
-                      >
-                        <X className="h-4 w-4" />
-                        TIDAK
-                      </button>
+              {/* Simultaneous Guess Control Bar */}
+              <div
+                className={`rounded-xl border p-3.5 sm:p-4 ${
+                  view.opponentGuessSubmitted && !view.myGuessSubmitted
+                    ? "border-[#d4a24c]/65 bg-[#221f14]/90"
+                    : "border-white/12 bg-[#121915]/90"
+                }`}
+              >
+                {view.myGuessSubmitted ? (
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      {myGuessChar && (
+                        <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg border border-[#d4a24c]/50">
+                          <CharacterPortrait character={myGuessChar} />
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-[#d4a24c]">
+                          Tebakanmu Terkunci: {myGuessChar?.name ?? "-"}
+                        </p>
+                        <p className="mt-0.5 text-xs text-[#cfc8ba]">
+                          Menunggu {opponent?.name ?? "lawan"} mengunci
+                          tebakannya untuk membuka hasil...
+                        </p>
+                      </div>
                     </div>
                   </div>
-                )}
-
-                {isWaitingOpponentAnswer && view.pendingQuestion && (
-                  <div className="space-y-1">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-[#d4a24c]">
-                      Menunggu jawaban {opponent?.name ?? "lawan"}...
-                    </p>
-                    <p className="text-sm text-[#ebe5d8]">
-                      Pertanyaanmu: &ldquo;{view.pendingQuestion.question}&rdquo;
-                    </p>
-                  </div>
-                )}
-
-                {canAskOrGuess && (
+                ) : (
                   <div className="space-y-2.5">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="text-xs font-semibold text-emerald-300">
-                        Giliranmu! Ajukan pertanyaan atau langsung tebak.
-                      </span>
+                      <div>
+                        {view.opponentGuessSubmitted ? (
+                          <p className="text-xs font-semibold text-[#f3dfb8]">
+                            {opponent?.name ?? "Lawan"} sudah mengunci
+                            tebakannya! Sekarang giliran kamu mengunci tebakan.
+                          </p>
+                        ) : (
+                          <p className="text-xs text-[#cfc8ba]">
+                            Tanya-jawab bebas lewat WhatsApp/obrolan, eliminasi
+                            kartu di papan, lalu kunci tebakan bersama.
+                          </p>
+                        )}
+                      </div>
+
                       <button
                         type="button"
                         onClick={() => {
                           soundManager.play("click");
                           setGuessMode((g) => !g);
                           setConfirmGuessChar(null);
-                          setLocalError(null);
                         }}
-                        className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer ${
+                        className={`flex shrink-0 items-center gap-1.5 rounded-lg border px-3.5 py-2 text-xs font-semibold transition-colors cursor-pointer ${
                           guessMode
                             ? "border-[#d9483b] bg-[#d9483b]/20 text-[#f5b4ae]"
-                            : "border-[#d4a24c]/45 bg-[#221f14] text-[#f3dfb8] hover:bg-[#2d291a]"
+                            : "border-[#d4a24c]/50 bg-[#d4a24c] text-[#111210] hover:bg-[#dfb263]"
                         }`}
                       >
                         {guessMode ? (
@@ -445,31 +432,31 @@ export function TebakKarakterBoard({
                           </>
                         ) : (
                           <>
-                            <Crosshair className="h-3.5 w-3.5 text-[#d4a24c]" />
-                            Tebak Karakter
+                            <Crosshair className="h-3.5 w-3.5" />
+                            Kunci Tebakan
                           </>
                         )}
                       </button>
                     </div>
 
-                    {guessMode ? (
-                      <div className="rounded-lg border border-[#d9483b]/40 bg-[#2a1514]/80 px-3 py-2.5 text-xs text-[#f5b4ae]">
+                    {guessMode && (
+                      <div className="rounded-lg border border-[#d4a24c]/40 bg-[#1a1913]/90 px-3 py-2.5 text-xs text-[#f3dfb8]">
                         {confirmGuessChar ? (
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <span>
-                              Yakin tebak{" "}
-                              <strong className="text-[#ebe5d8]">
+                              Kunci tebakanmu ke{" "}
+                              <strong className="text-white">
                                 {confirmGuessChar.name}
                               </strong>
-                              ? Salah tebak langsung kalah ronde ini!
+                              ? Hasil baru terbuka setelah keduanya menebak.
                             </span>
                             <div className="flex items-center gap-2">
                               <button
                                 type="button"
                                 onClick={handleConfirmGuess}
-                                className="rounded-lg bg-[#d9483b] px-3 py-1.5 font-semibold text-white hover:bg-[#e55a4d] cursor-pointer"
+                                className="rounded-lg bg-[#d4a24c] px-3 py-1.5 font-semibold text-[#111210] hover:bg-[#dfb263] cursor-pointer"
                               >
-                                Ya, Tebak!
+                                Ya, Kunci Tebakan!
                               </button>
                               <button
                                 type="button"
@@ -482,62 +469,12 @@ export function TebakKarakterBoard({
                           </div>
                         ) : (
                           <span>
-                            Klik kartu karakter aktif di papan untuk menebak.
-                            Hati-hati: <strong>salah tebak = kalah ronde ini!</strong>
+                            Klik salah satu karakter aktif di papan untuk
+                            mengunci tebakanmu.
                           </span>
                         )}
                       </div>
-                    ) : (
-                      <>
-                        <form onSubmit={handleSubmitQuestion} className="flex gap-2">
-                          <input
-                            type="text"
-                            maxLength={100}
-                            value={questionDraft}
-                            onChange={(e) => {
-                              setQuestionDraft(e.target.value);
-                              setLocalError(null);
-                            }}
-                            placeholder="Ketik pertanyaan Ya/Tidak (cth: Pakai kacamata?)"
-                            className="w-full rounded-lg border border-white/15 bg-[#0e1411] px-3 py-2 text-xs text-[#ebe5d8] placeholder:text-[#6f7b72] focus:border-[#d4a24c] focus:outline-none"
-                          />
-                          <button
-                            type="submit"
-                            className="flex shrink-0 items-center gap-1.5 rounded-lg bg-[#d4a24c] px-4 py-2 text-xs font-semibold text-[#111210] hover:bg-[#dfb263] transition-colors cursor-pointer"
-                          >
-                            <Send className="h-3.5 w-3.5" />
-                            Tanya
-                          </button>
-                        </form>
-                        <div className="flex flex-wrap gap-1.5">
-                          {QUICK_QUESTION_IDEAS.map((idea) => (
-                            <button
-                              key={idea}
-                              type="button"
-                              onClick={() => setQuestionDraft(idea)}
-                              className="rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-[11px] text-[#a9b5ab] hover:border-[#d4a24c]/40 hover:text-[#f3dfb8] transition-colors cursor-pointer"
-                            >
-                              {idea}
-                            </button>
-                          ))}
-                        </div>
-                      </>
                     )}
-                    {localError && (
-                      <p className="text-xs text-[#f5b4ae]">{localError}</p>
-                    )}
-                  </div>
-                )}
-
-                {!isMyTurn && !isWaitingMyAnswer && !isWaitingOpponentAnswer && (
-                  <div className="space-y-1">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-[#9c9689]">
-                      Giliran {opponent?.name ?? "lawan"}
-                    </p>
-                    <p className="text-xs text-[#cfc8ba]">
-                      {opponent?.name ?? "Lawan"} sedang menyusun pertanyaan atau
-                      bersiap menebak. Kamu tetap bisa membalik kartu di papanmu.
-                    </p>
                   </div>
                 )}
               </div>
@@ -547,9 +484,9 @@ export function TebakKarakterBoard({
             <div className="space-y-2">
               <div className="flex items-center justify-between text-[11px] text-[#a9b5ab]">
                 <span>
-                  {guessMode && canAskOrGuess
-                    ? "Mode Tebak aktif: klik kartu karakter pilihanmu."
-                    : "Klik kartu untuk eliminasi / pulihkan catatanmu."}
+                  {guessMode && canGuessNow
+                    ? "Mode Tebak aktif: klik karakter yang kamu yakini."
+                    : "Klik kartu kapan saja untuk eliminasi / pulihkan catatanmu."}
                 </span>
                 <span className="font-mono-tabular">
                   {remainingForMe} aktif • {eliminatedSet.size} tersisih
@@ -561,7 +498,7 @@ export function TebakKarakterBoard({
                   const isEliminated = eliminatedSet.has(char.id);
                   const isConfirming = confirmGuessChar?.id === char.id;
                   const canClickInGuessMode =
-                    !(guessMode && canAskOrGuess) || !isEliminated;
+                    !(guessMode && canGuessNow) || !isEliminated;
 
                   return (
                     <motion.button
@@ -572,11 +509,11 @@ export function TebakKarakterBoard({
                       onClick={() => handleCardClick(char)}
                       className={`group relative flex flex-col overflow-hidden rounded-xl border text-left transition-all ${
                         isConfirming
-                          ? "border-[#d9483b] bg-[#2a1514] ring-2 ring-[#d9483b]"
+                          ? "border-[#d4a24c] bg-[#2a2414] ring-2 ring-[#d4a24c]"
                           : isEliminated
                             ? "border-white/8 bg-[#0e1411]/80 opacity-35 grayscale"
-                            : guessMode && canAskOrGuess
-                              ? "border-[#d4a24c]/55 bg-[#121915] hover:border-[#d9483b] hover:ring-2 hover:ring-[#d9483b]/60"
+                            : guessMode && canGuessNow
+                              ? "border-[#d4a24c]/55 bg-[#121915] hover:border-[#d4a24c] hover:ring-2 hover:ring-[#d4a24c]/60"
                               : "border-white/12 bg-[#121915]/95 hover:border-[#d4a24c]/55"
                       } ${
                         canClickInGuessMode
@@ -608,102 +545,70 @@ export function TebakKarakterBoard({
                 })}
               </div>
             </div>
-
-            {/* Q&A History Feed */}
-            <div className="rounded-xl border border-white/10 bg-[#121915]/85 p-3.5">
-              <div className="mb-2 flex items-center justify-between text-xs">
-                <span className="flex items-center gap-1.5 font-semibold text-[#cfc8ba]">
-                  <MessageSquareText className="h-3.5 w-3.5 text-[#d4a24c]" />
-                  Riwayat Tanya-Jawab ({view.qaHistory.length})
-                </span>
-              </div>
-              {view.qaHistory.length === 0 ? (
-                <p className="text-xs text-[#7e8a81]">
-                  Belum ada pertanyaan di ronde ini.
-                </p>
-              ) : (
-                <div className="max-h-40 space-y-1.5 overflow-y-auto pr-1">
-                  {[...view.qaHistory].reverse().map((qa) => {
-                    const asker = room.players.find((p) => p.id === qa.askerId);
-                    const isYes = qa.answer === "YES";
-                    return (
-                      <div
-                        key={qa.id}
-                        className="flex items-center justify-between gap-3 rounded-lg border border-white/8 bg-[#171f1b]/90 px-3 py-1.5 text-xs"
-                      >
-                        <div className="min-w-0">
-                          <span className="font-semibold text-[#d4a24c]">
-                            {asker?.name ?? "Pemain"}:
-                          </span>{" "}
-                          <span className="text-[#ebe5d8]">{qa.question}</span>
-                        </div>
-                        <span
-                          className={`shrink-0 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase ${
-                            isYes
-                              ? "bg-emerald-500/20 text-emerald-300"
-                              : "bg-[#d9483b]/20 text-[#f5b4ae]"
-                          }`}
-                        >
-                          {isYes ? "YA" : "TIDAK"}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
           </div>
         )}
 
         {/* PHASE 3: ROUND_END */}
         {view.phase === "ROUND_END" && view.lastRoundSummary && (
-          <div className="mx-auto my-4 w-full max-w-xl space-y-5 text-center">
+          <div className="mx-auto my-4 w-full max-w-2xl space-y-5 text-center">
             <div>
               <p className="flex items-center justify-center gap-1.5 text-xs uppercase tracking-wider text-[#d4a24c]">
                 <Sparkles className="h-3.5 w-3.5" />
                 Ronde {view.lastRoundSummary.roundNumber} Selesai
               </p>
               <h2 className="mt-1 font-display text-2xl text-[#f3dfb8] sm:text-3xl">
-                {view.lastRoundSummary.winnerId === playerId
-                  ? "Kamu Menang Ronde Ini!"
-                  : `${opponent?.name ?? "Lawan"} Menang Ronde Ini!`}
+                {renderRoundOutcomeTitle()}
               </h2>
               <p className="mt-1 text-xs text-[#a9b5ab]">
-                {(() => {
-                  const guesser = room.players.find(
-                    (p) => p.id === view.lastRoundSummary?.guesserId
-                  );
-                  const guessed = TEBAK_KARAKTER_BY_ID.get(
-                    view.lastRoundSummary.guessedCharacterId
-                  );
-                  return view.lastRoundSummary.reason === "CORRECT_GUESS"
-                    ? `${guesser?.name ?? "Pemain"} berhasil menebak ${guessed?.name ?? ""} dengan tepat (${view.lastRoundSummary.questionCount} pertanyaan).`
-                    : `${guesser?.name ?? "Pemain"} menebak ${guessed?.name ?? ""} — salah! Poin otomatis untuk lawan.`;
-                })()}
+                {renderRoundOutcomeDesc()}
               </p>
             </div>
 
             <div className="grid gap-3 text-left sm:grid-cols-2">
               {[me, opponent].map((p) => {
                 if (!p) return null;
-                const charId = view.lastRoundSummary?.secretCharacters[p.id];
-                const char = charId ? TEBAK_KARAKTER_BY_ID.get(charId) : null;
+                const other = p.id === me?.id ? opponent : me;
+                const secretId = view.lastRoundSummary?.secretCharacters[p.id];
+                const secretChar = secretId
+                  ? TEBAK_KARAKTER_BY_ID.get(secretId)
+                  : null;
+                const guessId = view.lastRoundSummary?.guesses[p.id];
+                const guessChar = guessId
+                  ? TEBAK_KARAKTER_BY_ID.get(guessId)
+                  : null;
+                const targetSecretId = other
+                  ? view.lastRoundSummary?.secretCharacters[other.id]
+                  : null;
+                const guessedCorrectly = Boolean(
+                  guessId && targetSecretId && guessId === targetSecretId
+                );
+
                 return (
                   <div
                     key={p.id}
                     className="flex items-center gap-3 rounded-xl border border-white/12 bg-[#121915]/90 p-3.5"
                   >
-                    {char && (
+                    {secretChar && (
                       <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-[#d4a24c]/50">
-                        <CharacterPortrait character={char} />
+                        <CharacterPortrait character={secretChar} />
                       </div>
                     )}
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-xs text-[#9c9689]">
                         Karakter rahasia {p.name}
                       </p>
                       <p className="font-display text-lg font-bold text-[#ebe5d8]">
-                        {char?.name ?? "-"}
+                        {secretChar?.name ?? "-"}
+                      </p>
+                      <p
+                        className={`mt-0.5 text-xs font-medium ${
+                          guessedCorrectly
+                            ? "text-emerald-300"
+                            : "text-[#f5b4ae]"
+                        }`}
+                      >
+                        Tebakan {p.name}: {guessChar?.name ?? "-"}{" "}
+                        {guessedCorrectly ? "✓" : "✗"}
                       </p>
                     </div>
                   </div>
@@ -736,7 +641,7 @@ export function TebakKarakterBoard({
 
         {/* PHASE 4: MATCH_END / MATCH_OVER */}
         {(view.phase === "MATCH_END" || room.phase === "MATCH_OVER") && (
-          <div className="mx-auto my-4 w-full max-w-lg space-y-5 text-center">
+          <div className="mx-auto my-4 w-full max-w-2xl space-y-5 text-center">
             <div>
               <p className="text-xs uppercase tracking-wider text-[#d4a24c]">
                 Match Selesai
@@ -751,47 +656,55 @@ export function TebakKarakterBoard({
                   Taruhan: {room.customStake}
                 </p>
               )}
-              {view.lastRoundSummary && (
-                <p className="mt-1 text-xs text-[#a9b5ab]">
-                  {(() => {
-                    const guesser = room.players.find(
-                      (p) => p.id === view.lastRoundSummary?.guesserId
-                    );
-                    const guessed = TEBAK_KARAKTER_BY_ID.get(
-                      view.lastRoundSummary.guessedCharacterId
-                    );
-                    return view.lastRoundSummary.reason === "CORRECT_GUESS"
-                      ? `Ronde penentuan dimenangkan oleh tebakan tepat ${guesser?.name ?? ""} (${guessed?.name ?? ""}).`
-                      : `${guesser?.name ?? ""} salah menebak ${guessed?.name ?? ""} di ronde penentuan.`;
-                  })()}
-                </p>
-              )}
             </div>
 
             {view.lastRoundSummary && (
               <div className="grid gap-3 text-left sm:grid-cols-2">
                 {[me, opponent].map((p) => {
                   if (!p) return null;
-                  const charId = view.lastRoundSummary?.secretCharacters[p.id];
-                  const char = charId
-                    ? TEBAK_KARAKTER_BY_ID.get(charId)
+                  const other = p.id === me?.id ? opponent : me;
+                  const secretId =
+                    view.lastRoundSummary?.secretCharacters[p.id];
+                  const secretChar = secretId
+                    ? TEBAK_KARAKTER_BY_ID.get(secretId)
                     : null;
+                  const guessId = view.lastRoundSummary?.guesses[p.id];
+                  const guessChar = guessId
+                    ? TEBAK_KARAKTER_BY_ID.get(guessId)
+                    : null;
+                  const targetSecretId = other
+                    ? view.lastRoundSummary?.secretCharacters[other.id]
+                    : null;
+                  const guessedCorrectly = Boolean(
+                    guessId && targetSecretId && guessId === targetSecretId
+                  );
+
                   return (
                     <div
                       key={p.id}
                       className="flex items-center gap-3 rounded-xl border border-white/12 bg-[#121915]/90 p-3.5"
                     >
-                      {char && (
+                      {secretChar && (
                         <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-[#d4a24c]/50">
-                          <CharacterPortrait character={char} />
+                          <CharacterPortrait character={secretChar} />
                         </div>
                       )}
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-xs text-[#9c9689]">
                           Karakter terakhir {p.name}
                         </p>
                         <p className="font-display text-lg font-bold text-[#ebe5d8]">
-                          {char?.name ?? "-"}
+                          {secretChar?.name ?? "-"}
+                        </p>
+                        <p
+                          className={`mt-0.5 text-xs font-medium ${
+                            guessedCorrectly
+                              ? "text-emerald-300"
+                              : "text-[#f5b4ae]"
+                          }`}
+                        >
+                          Tebakan {p.name}: {guessChar?.name ?? "-"}{" "}
+                          {guessedCorrectly ? "✓" : "✗"}
                         </p>
                       </div>
                     </div>

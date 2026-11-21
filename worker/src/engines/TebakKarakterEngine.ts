@@ -2,32 +2,23 @@ import {
   TEBAK_KARAKTER_BY_ID,
   TEBAK_KARAKTER_ROSTER,
   type TebakKarakterAction,
-  type TebakKarakterPendingQuestion,
   type TebakKarakterPhase,
-  type TebakKarakterQA,
+  type TebakKarakterRoundOutcome,
   type TebakKarakterRoundSummary,
-  type TebakKarakterTurnStage,
   type TebakKarakterView,
 } from "@arcade-hub/shared";
 import { EngineError, type EngineResult, type IGameEngine } from "./IGameEngine.ts";
 
 const TARGET_WINS = 2;
-const MIN_QUESTION_LENGTH = 2;
-const MAX_QUESTION_LENGTH = 100;
 
 export interface TebakKarakterState {
   playerIds: [string, string];
   phase: TebakKarakterPhase;
   roundNumber: number;
-  startingPlayerIndex: 0 | 1;
   scores: Record<string, number>;
   secretCharacters: Record<string, string | null>;
+  guesses: Record<string, string | null>;
   eliminatedIds: Record<string, string[]>;
-  currentTurnPlayerId: string;
-  turnStage: TebakKarakterTurnStage;
-  pendingQuestion: TebakKarakterPendingQuestion | null;
-  qaHistory: TebakKarakterQA[];
-  nextQuestionSeq: number;
   readyForNextRound: Record<string, boolean>;
   lastRoundSummary: TebakKarakterRoundSummary | null;
   winnerId: string | null;
@@ -46,30 +37,12 @@ function assertValidCharacterId(characterId: string): string {
   return characterId;
 }
 
-function validateQuestion(raw: unknown): string {
-  if (typeof raw !== "string") {
-    throw new EngineError("INVALID_ACTION", "Pertanyaan harus berupa teks.");
-  }
-  const clean = raw.trim().replace(/\s+/g, " ");
-  if (clean.length < MIN_QUESTION_LENGTH || clean.length > MAX_QUESTION_LENGTH) {
-    throw new EngineError(
-      "INVALID_ACTION",
-      `Pertanyaan harus antara ${MIN_QUESTION_LENGTH} hingga ${MAX_QUESTION_LENGTH} karakter.`
-    );
-  }
-  return clean;
-}
-
-function createEmptyRoundFields(playerIds: [string, string], starterId: string) {
+function createEmptyRoundFields(playerIds: [string, string]) {
   const [p1, p2] = playerIds;
   return {
     secretCharacters: { [p1]: null, [p2]: null } as Record<string, string | null>,
+    guesses: { [p1]: null, [p2]: null } as Record<string, string | null>,
     eliminatedIds: { [p1]: [], [p2]: [] } as Record<string, string[]>,
-    currentTurnPlayerId: starterId,
-    turnStage: "ASK_OR_GUESS" as TebakKarakterTurnStage,
-    pendingQuestion: null as TebakKarakterPendingQuestion | null,
-    qaHistory: [] as TebakKarakterQA[],
-    nextQuestionSeq: 1,
     readyForNextRound: { [p1]: false, [p2]: false } as Record<string, boolean>,
   };
 }
@@ -81,24 +54,18 @@ export class TebakKarakterEngine
   readonly id = "tebak-karakter";
   readonly name = "Tebak Karakter";
   readonly tagline =
-    "Pilih karakter rahasia, lempar pertanyaan Ya/Tidak, dan tebak pilihan lawan.";
+    "Pilih karakter rahasia, ngobrol bebas untuk eliminasi papan, lalu kunci tebakan bersama.";
   readonly minPlayers = 2;
   readonly maxPlayers = 2;
 
-  constructor(private readonly rng: () => number = Math.random) {}
-
   initState(playerIds: [string, string]): TebakKarakterState {
     const [p1, p2] = playerIds;
-    const startingPlayerIndex: 0 | 1 = this.rng() < 0.5 ? 0 : 1;
-    const starterId = playerIds[startingPlayerIndex];
-
     return {
       playerIds,
       phase: "SELECT_CHARACTER",
       roundNumber: 1,
-      startingPlayerIndex,
       scores: { [p1]: 0, [p2]: 0 },
-      ...createEmptyRoundFields(playerIds, starterId),
+      ...createEmptyRoundFields(playerIds),
       lastRoundSummary: null,
       winnerId: null,
     };
@@ -126,10 +93,6 @@ export class TebakKarakterEngine
         return this.handleSelectCharacter(state, playerId, action.characterId);
       case "TOGGLE_ELIMINATE":
         return this.handleToggleEliminate(state, playerId, action.characterId);
-      case "ASK_QUESTION":
-        return this.handleAskQuestion(state, playerId, action.question);
-      case "ANSWER_QUESTION":
-        return this.handleAnswerQuestion(state, playerId, action.answer);
       case "GUESS_CHARACTER":
         return this.handleGuessCharacter(state, playerId, action.characterId);
       case "NEXT_ROUND":
@@ -224,97 +187,6 @@ export class TebakKarakterEngine
     };
   }
 
-  private handleAskQuestion(
-    state: TebakKarakterState,
-    playerId: string,
-    rawQuestion: string
-  ): EngineResult<TebakKarakterState> {
-    if (state.phase !== "PLAYING") {
-      throw new EngineError("INVALID_ACTION", "Ronde belum dimulai.");
-    }
-    if (state.currentTurnPlayerId !== playerId) {
-      throw new EngineError("NOT_YOUR_TURN", "Sekarang bukan giliranmu.");
-    }
-    if (state.turnStage !== "ASK_OR_GUESS") {
-      throw new EngineError(
-        "INVALID_ACTION",
-        "Tunggu jawaban dari pertanyaan sebelumnya."
-      );
-    }
-
-    const question = validateQuestion(rawQuestion);
-    const pendingQuestion: TebakKarakterPendingQuestion = {
-      id: state.nextQuestionSeq,
-      askerId: playerId,
-      question,
-    };
-
-    return {
-      newState: {
-        ...state,
-        turnStage: "ANSWER_QUESTION",
-        pendingQuestion,
-        nextQuestionSeq: state.nextQuestionSeq + 1,
-      },
-      events: [
-        {
-          type: "QUESTION_ASKED",
-          payload: { askerId: playerId, questionId: pendingQuestion.id },
-        },
-      ],
-    };
-  }
-
-  private handleAnswerQuestion(
-    state: TebakKarakterState,
-    playerId: string,
-    answer: string
-  ): EngineResult<TebakKarakterState> {
-    if (state.phase !== "PLAYING") {
-      throw new EngineError("INVALID_ACTION", "Ronde tidak sedang berlangsung.");
-    }
-    if (state.turnStage !== "ANSWER_QUESTION" || !state.pendingQuestion) {
-      throw new EngineError("INVALID_ACTION", "Tidak ada pertanyaan yang perlu dijawab.");
-    }
-    if (state.pendingQuestion.askerId === playerId) {
-      throw new EngineError(
-        "NOT_YOUR_TURN",
-        "Menunggu pasanganmu menjawab pertanyaan ini."
-      );
-    }
-    if (answer !== "YES" && answer !== "NO") {
-      throw new EngineError("INVALID_ACTION", "Jawaban harus YA atau TIDAK.");
-    }
-
-    const qaEntry: TebakKarakterQA = {
-      id: state.pendingQuestion.id,
-      askerId: state.pendingQuestion.askerId,
-      answererId: playerId,
-      question: state.pendingQuestion.question,
-      answer,
-    };
-
-    return {
-      newState: {
-        ...state,
-        currentTurnPlayerId: playerId,
-        turnStage: "ASK_OR_GUESS",
-        pendingQuestion: null,
-        qaHistory: [...state.qaHistory, qaEntry],
-      },
-      events: [
-        {
-          type: "QUESTION_ANSWERED",
-          payload: {
-            questionId: qaEntry.id,
-            answererId: playerId,
-            answer,
-          },
-        },
-      ],
-    };
-  }
-
   private handleGuessCharacter(
     state: TebakKarakterState,
     playerId: string,
@@ -323,63 +195,95 @@ export class TebakKarakterEngine
     if (state.phase !== "PLAYING") {
       throw new EngineError("INVALID_ACTION", "Ronde tidak sedang berlangsung.");
     }
-    if (state.currentTurnPlayerId !== playerId) {
-      throw new EngineError("NOT_YOUR_TURN", "Sekarang bukan giliranmu.");
-    }
-    if (state.turnStage !== "ASK_OR_GUESS") {
+    if (state.guesses[playerId] !== null) {
       throw new EngineError(
         "INVALID_ACTION",
-        "Selesaikan sesi tanya-jawab sebelum menebak."
+        "Kamu sudah mengunci tebakan di ronde ini."
       );
     }
 
     const guessedId = assertValidCharacterId(characterId);
-    const opponentId = getOpponentId(state.playerIds, playerId);
-    const opponentSecret = state.secretCharacters[opponentId];
-    const mySecret = state.secretCharacters[playerId];
-    if (!opponentSecret || !mySecret) {
+    const nextGuesses: Record<string, string | null> = {
+      ...state.guesses,
+      [playerId]: guessedId,
+    };
+
+    const [p1, p2] = state.playerIds;
+    const g1 = nextGuesses[p1];
+    const g2 = nextGuesses[p2];
+
+    if (!g1 || !g2) {
+      return {
+        newState: {
+          ...state,
+          guesses: nextGuesses,
+        },
+        events: [{ type: "GUESS_LOCKED", payload: { playerId } }],
+      };
+    }
+
+    const s1 = state.secretCharacters[p1];
+    const s2 = state.secretCharacters[p2];
+    if (!s1 || !s2) {
       throw new EngineError("INVALID_ACTION", "Karakter rahasia belum siap.");
     }
 
-    const isCorrect = guessedId === opponentSecret;
-    const roundWinnerId = isCorrect ? playerId : opponentId;
-    const reason = isCorrect ? "CORRECT_GUESS" : "WRONG_GUESS";
+    const p1Correct = g1 === s2;
+    const p2Correct = g2 === s1;
 
-    const nextScores: Record<string, number> = {
-      ...state.scores,
-      [roundWinnerId]: (state.scores[roundWinnerId] ?? 0) + 1,
-    };
+    let roundWinnerId: string | undefined;
+    let outcome: TebakKarakterRoundOutcome;
+
+    if (p1Correct && !p2Correct) {
+      roundWinnerId = p1;
+      outcome = "WIN";
+    } else if (p2Correct && !p1Correct) {
+      roundWinnerId = p2;
+      outcome = "WIN";
+    } else if (p1Correct && p2Correct) {
+      outcome = "DRAW_BOTH_CORRECT";
+    } else {
+      outcome = "DRAW_BOTH_WRONG";
+    }
+
+    const nextScores: Record<string, number> = { ...state.scores };
+    if (roundWinnerId) {
+      nextScores[roundWinnerId] = (nextScores[roundWinnerId] ?? 0) + 1;
+    }
 
     const summary: TebakKarakterRoundSummary = {
       roundNumber: state.roundNumber,
-      winnerId: roundWinnerId,
-      guesserId: playerId,
-      guessedCharacterId: guessedId,
-      reason,
-      secretCharacters: {
-        [playerId]: mySecret,
-        [opponentId]: opponentSecret,
+      winnerId: roundWinnerId ?? null,
+      outcome,
+      guesses: {
+        [p1]: g1,
+        [p2]: g2,
       },
-      questionCount: state.qaHistory.length,
+      secretCharacters: {
+        [p1]: s1,
+        [p2]: s2,
+      },
     };
 
     const matchWinnerId =
-      (nextScores[roundWinnerId] ?? 0) >= TARGET_WINS ? roundWinnerId : undefined;
+      roundWinnerId && (nextScores[roundWinnerId] ?? 0) >= TARGET_WINS
+        ? roundWinnerId
+        : undefined;
 
     if (matchWinnerId) {
       return {
         newState: {
           ...state,
           phase: "MATCH_END",
+          guesses: nextGuesses,
           scores: nextScores,
-          pendingQuestion: null,
           lastRoundSummary: summary,
           winnerId: matchWinnerId,
         },
         events: [
           {
-            type: isCorrect ? "GUESS_CORRECT" : "GUESS_WRONG",
-            payload: { guesserId: playerId, guessedCharacterId: guessedId },
+            type: "ROUND_RESOLVED",
+            payload: { winnerId: matchWinnerId, outcome },
           },
           {
             type: "MATCH_WON",
@@ -395,18 +299,18 @@ export class TebakKarakterEngine
       newState: {
         ...state,
         phase: "ROUND_END",
+        guesses: nextGuesses,
         scores: nextScores,
-        pendingQuestion: null,
         lastRoundSummary: summary,
       },
       events: [
         {
-          type: isCorrect ? "GUESS_CORRECT" : "GUESS_WRONG",
-          payload: { guesserId: playerId, guessedCharacterId: guessedId },
-        },
-        {
-          type: "ROUND_WON",
-          payload: { winnerId: roundWinnerId, roundNumber: state.roundNumber },
+          type: "ROUND_RESOLVED",
+          payload: {
+            winnerId: roundWinnerId ?? null,
+            outcome,
+            roundNumber: state.roundNumber,
+          },
         },
       ],
       roundWinnerId,
@@ -438,16 +342,12 @@ export class TebakKarakterEngine
       };
     }
 
-    const nextStarterIndex: 0 | 1 = state.startingPlayerIndex === 0 ? 1 : 0;
-    const nextStarterId = state.playerIds[nextStarterIndex];
-
     return {
       newState: {
         ...state,
         phase: "SELECT_CHARACTER",
         roundNumber: state.roundNumber + 1,
-        startingPlayerIndex: nextStarterIndex,
-        ...createEmptyRoundFields(state.playerIds, nextStarterId),
+        ...createEmptyRoundFields(state.playerIds),
       },
       events: [
         {
@@ -465,6 +365,8 @@ export class TebakKarakterEngine
     const opponentId = getOpponentId(state.playerIds, playerId);
     const mySecretCharacterId = state.secretCharacters[playerId] ?? null;
     const opponentSecret = state.secretCharacters[opponentId] ?? null;
+    const myGuessCharacterId = state.guesses[playerId] ?? null;
+    const opponentGuess = state.guesses[opponentId] ?? null;
     const myEliminatedIds = state.eliminatedIds[playerId] ?? [];
     const opponentEliminatedIds = state.eliminatedIds[opponentId] ?? [];
 
@@ -476,10 +378,9 @@ export class TebakKarakterEngine
       mySecretCharacterId,
       myCharacterSelected: mySecretCharacterId !== null,
       opponentCharacterSelected: opponentSecret !== null,
-      currentTurnPlayerId: state.currentTurnPlayerId,
-      turnStage: state.turnStage,
-      pendingQuestion: state.pendingQuestion,
-      qaHistory: state.qaHistory,
+      myGuessCharacterId,
+      myGuessSubmitted: myGuessCharacterId !== null,
+      opponentGuessSubmitted: opponentGuess !== null,
       myEliminatedIds,
       opponentRemainingCount: Math.max(
         0,
