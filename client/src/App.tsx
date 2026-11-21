@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { GlobalTopBar } from "./core/GlobalTopBar";
 import { EntryScreen, LobbyView } from "./core/LobbyView";
 import { TauntOverlay } from "./core/TauntOverlay";
@@ -6,11 +5,6 @@ import { useGameSocket } from "./core/useGameSocket";
 import { getGameComponent } from "./games/registry";
 
 export function App() {
-  const initialRoomCode = useMemo(() => {
-    const params = new URLSearchParams(window.location.search);
-    return (params.get("room") ?? "").toUpperCase();
-  }, []);
-
   const {
     status,
     playerId,
@@ -19,6 +13,7 @@ export function App() {
     lastEvents,
     taunts,
     errorBanner,
+    resumingRoomId,
     joinRoom,
     leaveRoom,
     setStake,
@@ -29,6 +24,10 @@ export function App() {
     sendGameAction,
     sendTaunt,
   } = useGameSocket();
+
+  const currentUrlRoomCode = !room
+    ? (new URLSearchParams(window.location.search).get("room") ?? "").toUpperCase()
+    : "";
 
   const ActiveGameBoard = room ? getGameComponent(room.selectedGameId) : null;
 
@@ -43,11 +42,34 @@ export function App() {
       <TauntOverlay taunts={taunts} myPlayerId={playerId} />
 
       {!room ? (
-        <EntryScreen
-          initialRoomCode={initialRoomCode}
-          status={status}
-          onJoin={joinRoom}
-        />
+        resumingRoomId && (status === "connecting" || status === "reconnecting") ? (
+          <div className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-4 px-5 text-center">
+            <div className="space-y-1.5">
+              <p className="font-display text-2xl text-[#ebe5d8]">
+                Meja{" "}
+                <span className="font-mono-tabular text-[#d4a24c]">
+                  {resumingRoomId}
+                </span>
+              </p>
+              <p className="text-sm text-[#9c9689]">
+                Menyambungkan kembali ke sesi permainan...
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={leaveRoom}
+              className="rounded-lg border border-white/12 bg-[#171815] px-4 py-2 text-xs text-[#9c9689] hover:text-[#ebe5d8] transition-colors cursor-pointer"
+            >
+              Batal
+            </button>
+          </div>
+        ) : (
+          <EntryScreen
+            initialRoomCode={currentUrlRoomCode}
+            status={status}
+            onJoin={joinRoom}
+          />
+        )
       ) : (
         <>
           <GlobalTopBar

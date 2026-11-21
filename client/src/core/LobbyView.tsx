@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 import type { PublicRoomState } from "@arcade-hub/shared";
 import { REGISTERED_GAMES } from "../games/registry";
-import { createRoom, type SocketStatus } from "./useGameSocket";
+import { createRoom, loadLastPlayerName, type SocketStatus } from "./useGameSocket";
 
 interface EntryScreenProps {
   initialRoomCode: string;
@@ -11,7 +11,7 @@ interface EntryScreenProps {
 }
 
 export function EntryScreen({ initialRoomCode, status, onJoin }: EntryScreenProps) {
-  const [playerName, setPlayerName] = useState("");
+  const [playerName, setPlayerName] = useState(() => loadLastPlayerName());
   const [roomCode, setRoomCode] = useState(initialRoomCode);
   const [inviteMode, setInviteMode] = useState(() => Boolean(initialRoomCode));
   const [creating, setCreating] = useState(false);

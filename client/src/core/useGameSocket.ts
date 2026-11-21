@@ -24,6 +24,8 @@ interface StoredSession {
 }
 
 const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, "") ?? "";
+const ACTIVE_ROOM_KEY = "arcade-hub:active-room";
+const LAST_NAME_KEY = "arcade-hub:last-player-name";
 
 function getSessionKey(roomId: string): string {
   return `arcade-hub:session:${roomId.toUpperCase()}`;
@@ -41,11 +43,65 @@ function loadSession(roomId: string): StoredSession | null {
 }
 
 function saveSession(roomId: string, session: StoredSession): void {
+  const cleanRoom = roomId.toUpperCase();
   try {
-    sessionStorage.setItem(getSessionKey(roomId), JSON.stringify(session));
+    sessionStorage.setItem(getSessionKey(cleanRoom), JSON.stringify(session));
+    sessionStorage.setItem(ACTIVE_ROOM_KEY, cleanRoom);
   } catch {
     // ignore storage errors
   }
+}
+
+function clearSession(roomId?: string | null): void {
+  try {
+    if (roomId) {
+      sessionStorage.removeItem(getSessionKey(roomId));
+    }
+    sessionStorage.removeItem(ACTIVE_ROOM_KEY);
+  } catch {
+    // ignore storage errors
+  }
+}
+
+export function loadLastPlayerName(): string {
+  try {
+    return localStorage.getItem(LAST_NAME_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function saveLastPlayerName(playerName: string): void {
+  try {
+    localStorage.setItem(LAST_NAME_KEY, playerName);
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function getResumeRoomId(): string | null {
+  if (typeof window === "undefined") return null;
+  const fromUrl = new URLSearchParams(window.location.search)
+    .get("room")
+    ?.trim()
+    .toUpperCase();
+  if (fromUrl) return fromUrl;
+  try {
+    return sessionStorage.getItem(ACTIVE_ROOM_KEY)?.trim().toUpperCase() || null;
+  } catch {
+    return null;
+  }
+}
+
+function syncRoomQueryParam(roomId: string | null): void {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  if (roomId) {
+    url.searchParams.set("room", roomId.toUpperCase());
+  } else {
+    url.searchParams.delete("room");
+  }
+  window.history.replaceState({}, "", url.toString());
 }
 
 function buildWsUrl(roomId: string): string {
@@ -76,6 +132,7 @@ export function useGameSocket() {
   const [lastEvents, setLastEvents] = useState<GameEvent[]>([]);
   const [taunts, setTaunts] = useState<FloatingTaunt[]>([]);
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
+  const [resumingRoomId, setResumingRoomId] = useState<string | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
   const activeCredsRef = useRef<{ roomId: string; playerName: string } | null>(null);
@@ -114,6 +171,8 @@ export function useGameSocket() {
       const cleanName = playerName.trim().slice(0, 24) || "Player";
       activeCredsRef.current = { roomId: normalizedRoom, playerName: cleanName };
       intentionalCloseRef.current = false;
+      saveLastPlayerName(cleanName);
+      syncRoomQueryParam(normalizedRoom);
 
       setStatus(isReconnect ? "reconnecting" : "connecting");
       setErrorBanner(null);
@@ -162,6 +221,7 @@ export function useGameSocket() {
           }
           case "ROOM_STATE": {
             setRoom(msg.room);
+            setResumingRoomId(null);
             if (msg.room.phase === "LOBBY") {
               setGameView(null);
             }
@@ -193,6 +253,8 @@ export function useGameSocket() {
             setErrorBanner(msg.message);
             if (msg.code === "ROOM_FULL") {
               intentionalCloseRef.current = true;
+              clearSession(normalizedRoom);
+              setResumingRoomId(null);
               setStatus("error");
             }
             window.setTimeout(() => {
@@ -218,6 +280,7 @@ export function useGameSocket() {
         const attempt = reconnectAttemptRef.current;
         if (attempt >= 8) {
           setStatus("error");
+          setResumingRoomId(null);
           setErrorBanner("Koneksi terputus. Silakan muat ulang halaman.");
           return;
         }
@@ -246,11 +309,15 @@ export function useGameSocket() {
   );
 
   const leaveRoom = useCallback(() => {
+    const leavingRoomId = activeCredsRef.current?.roomId ?? getResumeRoomId();
     intentionalCloseRef.current = true;
     activeCredsRef.current = null;
     clearTimers();
     wsRef.current?.close();
     wsRef.current = null;
+    clearSession(leavingRoomId);
+    syncRoomQueryParam(null);
+    setResumingRoomId(null);
     setStatus("idle");
     setRoom(null);
     setGameView(null);
@@ -259,6 +326,15 @@ export function useGameSocket() {
   }, [clearTimers]);
 
   useEffect(() => {
+    const resumeRoom = getResumeRoomId();
+    if (resumeRoom) {
+      const saved = loadSession(resumeRoom);
+      if (saved?.playerToken && saved.playerName) {
+        setResumingRoomId(resumeRoom);
+        connectInternal(resumeRoom, saved.playerName, false);
+      }
+    }
+
     const syncOnFocus = () => {
       if (document.visibilityState === "hidden") return;
       const creds = activeCredsRef.current;
@@ -294,6 +370,7 @@ export function useGameSocket() {
     lastEvents,
     taunts,
     errorBanner,
+    resumingRoomId,
     joinRoom,
     leaveRoom,
     setStake: (stakeText: string) => sendMessage({ type: "SET_STAKE", stakeText }),
