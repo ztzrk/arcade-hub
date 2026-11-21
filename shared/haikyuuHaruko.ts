@@ -100,28 +100,28 @@ export const KARASUNO_FORMATIONS: readonly FormationMeta[] = [
     name: "Serangan Cepat Total",
     styleTag: "TEMPO KILAT",
     tagline: "Tempo gila ala Gagak Karasuno yang membuat blocker kewalahan.",
-    bonusDetail: "+1.5 OVR dasar, +2.5 OVR ekstra jika Setter & MB punya Speed >= 88",
+    bonusDetail: "+1.8 OVR jika Setter (Speed >= 87) & MB (Speed >= 88) aktif",
   },
   {
     id: "total-defense",
     name: "Tembok & Lantai Baja",
     styleTag: "PERTAHANAN TOTAL",
     tagline: "Pantang membiarkan bola menyentuh lantai sebelum serangan balik.",
-    bonusDetail: "+1.5 OVR dasar, +2.5 OVR ekstra jika Libero >= 88 & rata-rata Defense >= 85",
+    bonusDetail: "+1.8 OVR jika Libero OVR >= 88 & rata-rata Defense >= 85",
   },
   {
     id: "cannon-ace",
     name: "Tumpuan Ace Mutlak",
     styleTag: "MERIAM ACE",
     tagline: "Umpan tinggi penuh keyakinan untuk ditembakkan oleh Ace utama.",
-    bonusDetail: "+1.5 OVR dasar, +2.5 OVR ekstra jika ada Spiker (OH/OP) OVR >= 93",
+    bonusDetail: "+1.8 OVR jika ada Spiker (OH/OP) dengan OVR >= 92",
   },
   {
     id: "all-out-sync",
     name: "Sinkronisasi Gagak",
     styleTag: "SERANGAN 5 ORANG",
     tagline: "Semua pemain bergerak menyerang serentak dari berbagai sudut.",
-    bonusDetail: "+1.5 OVR dasar, +1.0 OVR per sinergi aktif (maks +4.0 OVR)",
+    bonusDetail: "+0.6 OVR per sinergi aktif (maks +2.0 OVR)",
   },
 ] as const;
 
@@ -1508,7 +1508,7 @@ export function computeActiveSynergies(
       id: "freak-quick",
       name: "Serangan Cepat Eksentrik",
       description: "Hinata & Kageyama: Minus-tempo combo yang mustahil dibaca!",
-      ovrBonus: 4.5,
+      ovrBonus: 2.5,
       involvedPlayerIds: ["hinata", "kageyama"],
     });
   }
@@ -1517,7 +1517,7 @@ export function computeActiveSynergies(
       id: "miya-twins",
       name: "Kembar Miya",
       description: "Atsumu & Osamu: Serangan kembar tercepat Inarizaki!",
-      ovrBonus: 4.0,
+      ovrBonus: 2.2,
       involvedPlayerIds: ["atsumu", "osamu"],
     });
   }
@@ -1526,7 +1526,7 @@ export function computeActiveSynergies(
       id: "atsumu-hinata",
       name: "Umpan Sang Penantang",
       description: "Hinata & Atsumu: Set agresif yang memancing potensi penuh!",
-      ovrBonus: 3.5,
+      ovrBonus: 1.8,
       involvedPlayerIds: ["hinata", "atsumu"],
     });
   }
@@ -1535,7 +1535,7 @@ export function computeActiveSynergies(
       id: "garbage-dump-brains",
       name: "Otak & Gagak Terbang",
       description: "Hinata & Kenma: Umpan presisi untuk pergerakan bebas!",
-      ovrBonus: 3.0,
+      ovrBonus: 1.5,
       involvedPlayerIds: ["hinata", "kenma"],
     });
   }
@@ -1544,7 +1544,7 @@ export function computeActiveSynergies(
       id: "seijoh-duo",
       name: "Kepercayaan 6 Tahun",
       description: "Oikawa & Iwaizumi: Koneksi insting tanpa kata!",
-      ovrBonus: 3.5,
+      ovrBonus: 1.8,
       involvedPlayerIds: ["oikawa", "iwaizumi"],
     });
   }
@@ -1553,7 +1553,7 @@ export function computeActiveSynergies(
       id: "owl-and-setter",
       name: "Burung Hantu & Penjinaknya",
       description: "Bokuto & Akaashi: Mode Ace selalu stabil di puncak!",
-      ovrBonus: 3.5,
+      ovrBonus: 1.8,
       involvedPlayerIds: ["bokuto", "akaashi"],
     });
   }
@@ -1562,7 +1562,7 @@ export function computeActiveSynergies(
       id: "itachiyama-champs",
       name: "Pilar Juara Itachiyama",
       description: "Sakusa & Komori: Standar elit bertahan & menyerang!",
-      ovrBonus: 4.0,
+      ovrBonus: 2.2,
       involvedPlayerIds: ["sakusa", "komori"],
     });
   }
@@ -1571,7 +1571,7 @@ export function computeActiveSynergies(
       id: "kamomedai-wings",
       name: "Sayap & Tembok Kamomedai",
       description: "Hoshiumi & Hirugami: Kombinasi blok & lompatan tanpa cela!",
-      ovrBonus: 3.5,
+      ovrBonus: 1.8,
       involvedPlayerIds: ["hoshiumi", "hirugami"],
     });
   }
@@ -1580,7 +1580,7 @@ export function computeActiveSynergies(
       id: "shiratori-duo",
       name: "Meriam & Monster Tebakan",
       description: "Ushijima & Tendou: Tekanan serangan dan blok psikologis!",
-      ovrBonus: 3.0,
+      ovrBonus: 1.5,
       involvedPlayerIds: ["ushijima", "tendou"],
     });
   }
@@ -1589,7 +1589,7 @@ export function computeActiveSynergies(
       id: "iron-wall",
       name: "Tembok Besi Date Tech",
       description: "Aone & Futakuchi: Triple block yang membekukan Ace lawan!",
-      ovrBonus: 3.0,
+      ovrBonus: 1.5,
       involvedPlayerIds: ["aone", "futakuchi"],
     });
   }
@@ -1598,7 +1598,7 @@ export function computeActiveSynergies(
       id: "mentor-block",
       name: "Guru & Murid Read Block",
       description: "Kuroo & Tsukishima: Penutupan jalur spike paling cerdas!",
-      ovrBonus: 3.0,
+      ovrBonus: 1.5,
       involvedPlayerIds: ["kuroo", "tsukishima"],
     });
   }
@@ -1607,7 +1607,7 @@ export function computeActiveSynergies(
       id: "guardian-and-ace",
       name: "Dewa Penjaga & Sang Ace",
       description: "Nishinoya & Asahi: Punggungmu aman, tembakkan bola!",
-      ovrBonus: 3.0,
+      ovrBonus: 1.5,
       involvedPlayerIds: ["nishinoya", "asahi"],
     });
   }
@@ -1618,7 +1618,7 @@ export function computeActiveSynergies(
       id: "top3-aces",
       name: "Meriam Top 3 Nasional",
       description: "Dua Ace Top 3 Nasional bermain dalam satu lapangan!",
-      ovrBonus: 3.0,
+      ovrBonus: 1.8,
       involvedPlayerIds: top3Aces.map((p) => p.id),
     });
   }
@@ -1626,7 +1626,7 @@ export function computeActiveSynergies(
   const karasunoPlayers = players.filter((p) => p.tags.includes("karasuno"));
   const karasunoCount = karasunoPlayers.length;
   if (karasunoCount >= 2) {
-    const kBonus = karasunoCount >= 4 ? 4.5 : karasunoCount === 3 ? 3.0 : 1.5;
+    const kBonus = karasunoCount >= 4 ? 2.2 : karasunoCount === 3 ? 1.5 : 0.8;
     activeSynergies.push({
       id: "karasuno-spirit",
       name: `Jiwa Gagak Karasuno (${karasunoCount})`,
@@ -1711,7 +1711,7 @@ export function evaluateTeam(
 
   const count = filled.length;
   const baseOvr = Number((sumBase / count).toFixed(1));
-  const avgPenalty = Number((sumPenalty / count).toFixed(1));
+  const avgPenalty = Number((sumPenalty * 0.25).toFixed(1));
   const stats: HaikyuuPlayerStats = {
     attack: Math.round(sumAtk / count),
     defense: Math.round(sumDef / count),
@@ -1725,10 +1725,10 @@ export function evaluateTeam(
   const karasunoCount = filledPlayers.filter((p) => p.tags.includes("karasuno")).length;
 
   const rawSynergyBonus = activeSynergies.reduce((acc, s) => acc + s.ovrBonus, 0);
-  const synergyBonus = Number(Math.min(11, rawSynergyBonus).toFixed(1));
+  const synergyBonus = Number(Math.min(5.0, rawSynergyBonus).toFixed(1));
 
-  // Formation bonus (only full strength once squad is evaluated, scales smoothly during draft)
-  let formationBonus = 1.5;
+  // Formation bonus requires meeting the tactical condition (no free base OVR inflation)
+  let formationBonus = 0;
   if (formationId === "run-gun") {
     const setter = lineup.S;
     const mb1 = lineup.MB1;
@@ -1736,12 +1736,12 @@ export function evaluateTeam(
     const fastMb =
       (mb1 && mb1.stats.speed >= 88) || (mb2 && mb2.stats.speed >= 88);
     if (setter && setter.stats.speed >= 87 && fastMb) {
-      formationBonus += 2.5;
+      formationBonus = 1.8;
     }
   } else if (formationId === "total-defense") {
     const libero = lineup.L;
     if (libero && libero.ovr >= 88 && stats.defense >= 85) {
-      formationBonus += 2.5;
+      formationBonus = 1.8;
     }
   } else if (formationId === "cannon-ace") {
     const hasEliteAce = filled.some(
@@ -1749,10 +1749,10 @@ export function evaluateTeam(
         (slotId === "OH1" || slotId === "OH2" || slotId === "OP") && p.ovr >= 92
     );
     if (hasEliteAce) {
-      formationBonus += 2.5;
+      formationBonus = 1.8;
     }
   } else if (formationId === "all-out-sync") {
-    formationBonus += Math.min(4.0, activeSynergies.length * 1.0);
+    formationBonus = Math.min(2.0, activeSynergies.length * 0.6);
   }
   formationBonus = Number(formationBonus.toFixed(1));
 
@@ -1793,7 +1793,7 @@ export const HARUKO_BRACKET: readonly HarukoOpponent[] = [
     schoolName: "Shiratorizawa Academy",
     shortName: "SHIRATORIZAWA",
     subtitle: "Perebutan Tiket ke Tokyo",
-    ovr: 85.5,
+    ovr: 86.0,
     bestOf: 3,
     primaryColor: "#f8fafc",
     secondaryColor: "#7e22ce",
@@ -1805,7 +1805,7 @@ export const HARUKO_BRACKET: readonly HarukoOpponent[] = [
     schoolName: "Inarizaki High",
     shortName: "INARIZAKI",
     subtitle: "Tokyo Metropolitan Gym • Court B",
-    ovr: 88.5,
+    ovr: 88.0,
     bestOf: 3,
     primaryColor: "#18181b",
     secondaryColor: "#9f1239",
@@ -1817,7 +1817,7 @@ export const HARUKO_BRACKET: readonly HarukoOpponent[] = [
     schoolName: "Nekoma High",
     shortName: "NEKOMA",
     subtitle: "Pertarungan di Tempat Sampah!",
-    ovr: 90.0,
+    ovr: 89.5,
     bestOf: 3,
     primaryColor: "#dc2626",
     secondaryColor: "#18181b",
@@ -1829,7 +1829,7 @@ export const HARUKO_BRACKET: readonly HarukoOpponent[] = [
     schoolName: "Kamomedai High",
     shortName: "KAMOMEDAI",
     subtitle: "Raksasa Kecil & Tembok Tak Tergoyahkan",
-    ovr: 91.5,
+    ovr: 91.0,
     bestOf: 3,
     primaryColor: "#f0f9ff",
     secondaryColor: "#0284c7",
@@ -1841,7 +1841,7 @@ export const HARUKO_BRACKET: readonly HarukoOpponent[] = [
     schoolName: "Fukurodani Academy",
     shortName: "FUKURODANI",
     subtitle: "Lapangan Oranye • Best of 5",
-    ovr: 93.0,
+    ovr: 92.0,
     bestOf: 5,
     primaryColor: "#1e293b",
     secondaryColor: "#eab308",
@@ -1853,7 +1853,7 @@ export const HARUKO_BRACKET: readonly HarukoOpponent[] = [
     schoolName: "Itachiyama Institute",
     shortName: "ITACHIYAMA",
     subtitle: "Perebutan Gelar Juara Nasional!",
-    ovr: 95.0,
+    ovr: 93.5,
     bestOf: 5,
     primaryColor: "#14532d",
     secondaryColor: "#a3e635",
@@ -1894,6 +1894,23 @@ export function getPlayersForSchoolPack(
   return HAIKYUU_PLAYERS.filter(
     (p) => p.schoolPackIds.includes(packId) && !excludePlayerIds.has(p.id)
   );
+}
+
+export function drawPackCandidates(
+  packId: string,
+  excludePlayerIds: ReadonlySet<string>,
+  maxCount = 3,
+  rng: () => number = Math.random
+): HaikyuuPlayer[] {
+  const pool = [...getPlayersForSchoolPack(packId, excludePlayerIds)];
+  // Fisher-Yates shuffle so spins don't guarantee the highest OVR star every time
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    const tmp = pool[i]!;
+    pool[i] = pool[j]!;
+    pool[j] = tmp;
+  }
+  return pool.slice(0, maxCount).sort((a, b) => b.ovr - a.ovr);
 }
 
 export function rollSchoolPack(
@@ -1968,9 +1985,11 @@ function simulateSingleSet(
   targetPoints: number,
   rng: () => number
 ): { karasuno: number; opponent: number } {
-  const diff = karasunoOvr - opponentOvr;
-  // Logistic win-point probability per rally
-  const rallyProb = Math.min(0.76, Math.max(0.24, 1 / (1 + Math.exp(-diff * 0.14))));
+  // Per-set momentum & form variance (+/- 2.0 OVR) so sets stay competitive
+  const setFormSwing = (rng() - 0.5) * 4.0;
+  const diff = karasunoOvr + setFormSwing - opponentOvr;
+  // Calibrated rally win probability: +3 OVR gives ~53.4% rally edge (~68% set win), keeping 2-0 sweeps earned
+  const rallyProb = Math.min(0.68, Math.max(0.32, 1 / (1 + Math.exp(-diff * 0.045))));
 
   let k = 0;
   let o = 0;
@@ -2000,8 +2019,8 @@ export function simulateHarukoMatch(
   let opponentSets = 0;
   const sets: SetScore[] = [];
 
-  // Slight match momentum variance (+/- 1.2 OVR)
-  const momentumShift = (rng() - 0.5) * 2.4;
+  // Match-level tactical variance (+/- 1.5 OVR)
+  const momentumShift = (rng() - 0.5) * 3.0;
   const effectiveTeamOvr = teamEval.totalOvr + momentumShift;
 
   while (karasunoSets < setsToWin && opponentSets < setsToWin) {

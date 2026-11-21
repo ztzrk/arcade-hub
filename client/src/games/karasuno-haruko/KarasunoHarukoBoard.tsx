@@ -21,8 +21,8 @@ import {
   KARASUNO_FORMATIONS,
   POSITION_LABELS,
   SCHOOL_PACKS,
+  drawPackCandidates,
   evaluateTeam,
-  getPlayersForSchoolPack,
   getPotentialResonances,
   rollSchoolPack,
   simulateHarukoMatch,
@@ -103,6 +103,7 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
   const [lineup, setLineup] = useState<LineupMap>({});
   const [usedPackIds, setUsedPackIds] = useState<string[]>([]);
   const [currentPack, setCurrentPack] = useState<SchoolPack | null>(null);
+  const [packCandidates, setPackCandidates] = useState<HaikyuuPlayer[]>([]);
   const [spinning, setSpinning] = useState(false);
   const [spinLanded, setSpinLanded] = useState(false);
   const [reelItems, setReelItems] = useState<SchoolPack[]>([]);
@@ -147,11 +148,6 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
     [lineup, formationId]
   );
 
-  const packCandidates = useMemo(() => {
-    if (!currentPack) return [];
-    return getPlayersForSchoolPack(currentPack.id, draftedPlayerIds);
-  }, [currentPack, draftedPlayerIds]);
-
   const startNewRun = () => {
     clearSpinTimers();
     soundManager.play("reveal");
@@ -161,6 +157,7 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
     setLineup({});
     setUsedPackIds([]);
     setCurrentPack(null);
+    setPackCandidates([]);
     setSpinning(false);
     setSpinLanded(false);
     setReelItems([]);
@@ -180,6 +177,7 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
     setSelectedPlayer(null);
     if (consumeReroll) {
       setCurrentPack(null);
+      setPackCandidates([]);
       setRerollsLeft((r) => Math.max(0, r - 1));
     }
     setSpinLanded(false);
@@ -220,6 +218,7 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
       setSpinning(false);
       setSpinLanded(false);
       setCurrentPack(chosen);
+      setPackCandidates(drawPackCandidates(chosen.id, draftedPlayerIds, 3));
       setUsedPackIds((prev) => [...prev, chosen.id]);
     }, 1580);
     reelTimersRef.current.push(finishTimer);
@@ -236,6 +235,7 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
     setLineup(nextLineup);
     setSelectedPlayer(null);
     setCurrentPack(null);
+    setPackCandidates([]);
     setReelItems([]);
 
     if (round >= TOTAL_DRAFT_ROUNDS) {

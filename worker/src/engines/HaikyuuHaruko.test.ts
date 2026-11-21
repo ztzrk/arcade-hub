@@ -5,6 +5,7 @@ import {
   HAIKYUU_PLAYERS,
   HARUKO_BRACKET,
   SCHOOL_PACKS,
+  drawPackCandidates,
   evaluateTeam,
   getPlayersForSchoolPack,
   getPositionFit,
@@ -98,10 +99,36 @@ describe("Haikyuu Haruko Draft Engine", () => {
       expect(usedPacks.has(pack.id)).toBe(false);
       usedPacks.add(pack.id);
 
-      const candidates = getPlayersForSchoolPack(pack.id, draftedPlayers);
+      const candidates = drawPackCandidates(pack.id, draftedPlayers, 3, rng);
       expect(candidates.length).toBeGreaterThan(0);
+      expect(candidates.length).toBeLessThanOrEqual(3);
       draftedPlayers.add(candidates[0]!.id);
     }
+  });
+
+  it("keeps match outcomes competitive so 2-0 sweeps are not automatic", () => {
+    const midLineup: LineupMap = {
+      S: HAIKYUU_PLAYER_BY_ID.get("akaashi")!, // 90
+      MB1: HAIKYUU_PLAYER_BY_ID.get("tsukishima")!, // 89
+      MB2: HAIKYUU_PLAYER_BY_ID.get("matsukawa")!, // 84
+      OH1: HAIKYUU_PLAYER_BY_ID.get("tanaka")!, // 86
+      OH2: HAIKYUU_PLAYER_BY_ID.get("goshiki")!, // 86
+      OP: HAIKYUU_PLAYER_BY_ID.get("daichi")!, // 86
+      L: HAIKYUU_PLAYER_BY_ID.get("akagi")!, // 87
+    };
+    const evalMid = evaluateTeam(midLineup, "total-defense");
+    expect(evalMid.totalOvr).toBeLessThan(91);
+
+    const rng = createSeededRng(777);
+    let lostSets = 0;
+    let sweeps = 0;
+    for (let i = 0; i < 40; i++) {
+      const m = simulateHarukoMatch(evalMid, midLineup, HARUKO_BRACKET[1]!, rng);
+      lostSets += m.opponentSets;
+      if (m.won && m.opponentSets === 0) sweeps += 1;
+    }
+    expect(lostSets).toBeGreaterThan(10);
+    expect(sweeps).toBeLessThan(25);
   });
 
   it("simulates volleyball sets with authentic deuce/win-by-2 rules and full Haruko bracket", () => {
