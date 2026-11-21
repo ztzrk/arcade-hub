@@ -376,7 +376,8 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
               </h1>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-[#9c9689]">
                 Putar rolet sekolah Haikyuu!!, susun 7 posisi lapangan Karasuno,
-                dan menangkan 6 babak Kejuaraan Musim Semi tanpa terkalahkan.
+                dan tempuh 10 babak dari Kualifikasi Miyagi hingga Final
+                Kejuaraan Musim Semi Tokyo.
               </p>
             </div>
 
@@ -872,8 +873,8 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
 
     return (
       <div className="mx-auto max-w-4xl px-3.5 py-5 sm:px-5 sm:py-7">
-        {/* 6-Match Bracket Stepper */}
-        <div className="mb-5 grid grid-cols-3 gap-1.5 sm:grid-cols-6">
+        {/* 10-Match Bracket Stepper */}
+        <div className="mb-5 grid grid-cols-2 gap-1.5 sm:grid-cols-5">
           {HARUKO_BRACKET.map((opp, idx) => {
             const done = matchHistory[idx];
             const isCurrent = idx === matchIndex;
@@ -890,7 +891,12 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
                       : "border-white/10 bg-[#151614] text-[#6b665d]"
                 }`}
               >
-                <p className="truncate font-semibold">{opp.shortName}</p>
+                <p className="truncate font-semibold">
+                  <span className="font-mono-tabular mr-1 opacity-65">
+                    {idx + 1}.
+                  </span>
+                  {opp.shortName}
+                </p>
               </div>
             );
           })}

@@ -137,11 +137,13 @@ describe("Haikyuu Haruko Draft Engine", () => {
     const evalMid = evaluateTeam(midLineup, "total-defense");
     expect(evalMid.totalOvr).toBeLessThan(91);
 
+    expect(HARUKO_BRACKET).toHaveLength(10);
+
     const rng = createSeededRng(777);
     let lostSets = 0;
     let sweeps = 0;
     for (let i = 0; i < 40; i++) {
-      const m = simulateHarukoMatch(evalMid, midLineup, HARUKO_BRACKET[1]!, rng);
+      const m = simulateHarukoMatch(evalMid, midLineup, HARUKO_BRACKET[5]!, rng);
       lostSets += m.opponentSets;
       if (m.won && m.opponentSets === 0) sweeps += 1;
     }

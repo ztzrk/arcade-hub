@@ -162,7 +162,7 @@ export function downloadVerifiedResultCard(
 
   const canvas = document.createElement("canvas");
   canvas.width = 1000;
-  canvas.height = 1140;
+  canvas.height = 1230;
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
 
@@ -208,7 +208,7 @@ export function downloadVerifiedResultCard(
   ctx.fillStyle = perfectRun ? "#d4a24c" : champion ? "#fb923c" : "#9c9689";
   ctx.font = "600 20px 'DM Sans', system-ui, sans-serif";
   const subline = perfectRun
-    ? "6-0 Tak Terkalahkan • 0 Set Kalah Sepanjang Turnamen"
+    ? `${HARUKO_BRACKET.length}-0 Tak Terkalahkan • 0 Set Kalah Sepanjang Turnamen`
     : `${formation} • Mode ${mode === "blind" ? "Blind Expert" : "Klasik"}`;
   ctx.fillText(subline, 68, 178);
 
@@ -316,15 +316,20 @@ export function downloadVerifiedResultCard(
       : "Resonansi: Tidak ada kombo khusus aktif";
   ctx.fillText(synText.slice(0, 86), 68, synY);
 
-  // Bracket Strip (6 matches)
+  // Bracket Strip (2 rows of 5 matches)
   ctx.fillStyle = "#ebe5d8";
   ctx.font = "700 18px 'DM Sans', system-ui, sans-serif";
-  ctx.fillText("HASIL KEJUARAAN MUSIM SEMI", 68, 914);
+  ctx.fillText("HASIL PERJALANAN HARUKO (10 BABAK)", 68, 914);
 
-  const bW = (canvas.width - 136 - 50) / 6;
+  const cols = 5;
+  const bGap = 10;
+  const bW = (canvas.width - 136 - bGap * (cols - 1)) / cols;
+  const bH = 68;
   HARUKO_BRACKET.forEach((opp, idx) => {
-    const x = 68 + idx * (bW + 10);
-    const y = 932;
+    const col = idx % cols;
+    const row = Math.floor(idx / cols);
+    const x = 68 + col * (bW + bGap);
+    const y = 932 + row * (bH + 10);
     const m = matchHistory[idx];
 
     ctx.fillStyle = m
@@ -332,41 +337,41 @@ export function downloadVerifiedResultCard(
         ? "rgba(16, 185, 129, 0.14)"
         : "rgba(244, 63, 94, 0.16)"
       : "#161714";
-    ctx.fillRect(x, y, bW, 74);
+    ctx.fillRect(x, y, bW, bH);
     ctx.strokeStyle = m
       ? m.won
         ? "rgba(52, 211, 153, 0.5)"
         : "rgba(251, 113, 133, 0.5)"
       : "rgba(255,255,255,0.1)";
-    ctx.strokeRect(x, y, bW, 74);
+    ctx.strokeRect(x, y, bW, bH);
 
     ctx.fillStyle = "#ebe5d8";
-    ctx.font = "700 14px 'DM Sans', system-ui, sans-serif";
+    ctx.font = "700 13px 'DM Sans', system-ui, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText(opp.shortName.slice(0, 10), x + bW / 2, y + 28);
+    ctx.fillText(`${idx + 1}. ${opp.shortName.slice(0, 10)}`, x + bW / 2, y + 26);
 
     ctx.fillStyle = m ? (m.won ? "#34d399" : "#fb7185") : "#6b665d";
-    ctx.font = "700 20px 'JetBrains Mono', monospace";
+    ctx.font = "700 19px 'JetBrains Mono', monospace";
     ctx.fillText(
       m ? `${m.karasunoSets}-${m.opponentSets}` : "--",
       x + bW / 2,
-      y + 56
+      y + 52
     );
   });
   ctx.textAlign = "left";
 
   // Footer with Verification Hash & Timestamp
   ctx.fillStyle = "rgba(255,255,255,0.1)";
-  ctx.fillRect(68, 1032, canvas.width - 136, 1);
+  ctx.fillRect(68, 1110, canvas.width - 136, 1);
 
   ctx.fillStyle = "#34d399";
   ctx.font = "700 18px 'JetBrains Mono', monospace";
-  ctx.fillText(`VERIFIED ID: ${verificationCode}`, 68, 1072);
+  ctx.fillText(`VERIFIED ID: ${verificationCode}`, 68, 1152);
 
   ctx.fillStyle = "#9c9689";
   ctx.font = "500 17px 'DM Sans', system-ui, sans-serif";
   ctx.textAlign = "right";
-  ctx.fillText(formatRunTimestamp(completedAt), canvas.width - 68, 1072);
+  ctx.fillText(formatRunTimestamp(completedAt), canvas.width - 68, 1152);
   ctx.textAlign = "left";
 
   const link = document.createElement("a");
