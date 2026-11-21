@@ -50,11 +50,32 @@ function SlotRow({
   compact?: boolean;
 }) {
   const wordGroups = useMemo(() => groupSlotsByWord(slots), [slots]);
+  const maxWordLen = useMemo(
+    () => Math.max(0, ...wordGroups.map((g) => g.length)),
+    [wordGroups]
+  );
+
+  const tileSizeClass = compact
+    ? "h-7 w-5.5 text-xs sm:h-8 sm:w-7 sm:text-sm"
+    : maxWordLen >= 10
+      ? "h-8 w-6 text-sm sm:h-12 sm:w-10 sm:text-xl md:h-14 md:w-12 md:text-2xl"
+      : maxWordLen >= 8
+        ? "h-9 w-7 text-base sm:h-12 sm:w-10 sm:text-xl md:h-14 md:w-12 md:text-2xl"
+        : "h-10 w-8 text-lg sm:h-12 sm:w-10 sm:text-xl md:h-14 md:w-12 md:text-2xl";
+
+  const blankDashClass = compact
+    ? "h-0.5 w-3 translate-y-1.5 sm:w-3.5 sm:translate-y-2"
+    : maxWordLen >= 10
+      ? "h-0.5 w-3 translate-y-2 sm:w-5 sm:translate-y-3"
+      : "h-0.5 w-4 translate-y-2 sm:w-5 sm:translate-y-3";
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-3">
+    <div className="flex max-w-full flex-wrap items-center justify-center gap-x-3 gap-y-2 sm:gap-x-5 sm:gap-y-3">
       {wordGroups.map((group, wordIdx) => (
-        <div key={wordIdx} className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
+        <div
+          key={wordIdx}
+          className="flex max-w-full flex-wrap items-center justify-center gap-1 sm:gap-2"
+        >
           {group.map((slot, charIdx) => {
             const isLetter = slot.kind === "letter";
             return (
@@ -63,11 +84,7 @@ function SlotRow({
                 initial={isLetter ? { scale: 0.8, rotateX: 70, opacity: 0.4 } : false}
                 animate={{ scale: 1, rotateX: 0, opacity: 1 }}
                 transition={{ duration: 0.22 }}
-                className={`font-mono-tabular flex items-center justify-center rounded-lg border font-bold uppercase select-none ${
-                  compact
-                    ? "h-8 w-7 text-sm"
-                    : "h-12 w-10 text-xl sm:h-14 sm:w-12 sm:text-2xl"
-                } ${
+                className={`font-mono-tabular flex items-center justify-center rounded-lg border font-bold uppercase select-none ${tileSizeClass} ${
                   isLetter
                     ? "border-[#d4a24c]/70 bg-[#252318] text-[#f3dfb8] shadow-inner"
                     : "border-white/15 bg-[#111915]/85 text-[#8a998d]"
@@ -77,9 +94,7 @@ function SlotRow({
                   slot.char
                 ) : (
                   <span
-                    className={`block rounded-full bg-[#cfc8ba]/65 ${
-                      compact ? "h-0.5 w-3.5 translate-y-2" : "h-0.5 w-5 translate-y-3"
-                    }`}
+                    className={`block rounded-full bg-[#cfc8ba]/65 ${blankDashClass}`}
                   />
                 )}
               </motion.div>
@@ -203,33 +218,35 @@ export function TebakKataBoard({
   };
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-5 px-4 py-5">
+    <div className="mx-auto flex max-w-4xl flex-col gap-3.5 px-3 py-3 sm:gap-5 sm:px-4 sm:py-5">
       {/* Match Score & Round Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 px-1">
-        <div className="flex items-center gap-2.5 text-xs text-[#a9b5ab]">
+      <div className="flex flex-wrap items-center justify-between gap-2.5 px-0.5 sm:gap-3 sm:px-1">
+        <div className="flex items-center gap-2 text-xs text-[#a9b5ab] sm:gap-2.5">
           <span className="font-mono-tabular rounded-md border border-white/10 bg-[#171815] px-2.5 py-1 text-[#ebe5d8]">
             Ronde {view.roundNumber}
           </span>
           <span>First to {view.targetWins}</span>
         </div>
 
-        <div className="flex items-center gap-3 rounded-lg border border-white/10 bg-[#171815] px-3.5 py-1.5 text-sm">
-          <span className="font-medium text-[#ebe5d8]">{me?.name ?? "Kamu"}</span>
-          <span className="font-mono-tabular rounded bg-[#d4a24c]/15 px-2 py-0.5 font-bold text-[#d4a24c]">
+        <div className="flex max-w-full items-center gap-2 rounded-lg border border-white/10 bg-[#171815] px-3 py-1.5 text-xs sm:gap-3 sm:px-3.5 sm:text-sm">
+          <span className="max-w-[80px] truncate font-medium text-[#ebe5d8] sm:max-w-[140px]">
+            {me?.name ?? "Kamu"}
+          </span>
+          <span className="font-mono-tabular shrink-0 rounded bg-[#d4a24c]/15 px-2 py-0.5 font-bold text-[#d4a24c]">
             {myScore}
           </span>
-          <span className="text-xs text-[#6b665d]">:</span>
-          <span className="font-mono-tabular rounded bg-white/8 px-2 py-0.5 font-bold text-[#ebe5d8]">
+          <span className="shrink-0 text-xs text-[#6b665d]">:</span>
+          <span className="font-mono-tabular shrink-0 rounded bg-white/8 px-2 py-0.5 font-bold text-[#ebe5d8]">
             {opponentScore}
           </span>
-          <span className="font-medium text-[#cfc8ba]">
+          <span className="max-w-[80px] truncate font-medium text-[#cfc8ba] sm:max-w-[140px]">
             {opponent?.name ?? "Lawan"}
           </span>
         </div>
       </div>
 
       {/* Main Baize Table */}
-      <div className="baize-felt relative flex min-h-[340px] flex-col items-center justify-between rounded-2xl px-5 py-6 sm:px-8">
+      <div className="baize-felt relative flex min-h-[280px] flex-col items-center justify-between rounded-2xl px-3.5 py-4 sm:min-h-[340px] sm:px-8 sm:py-6">
         {/* Phase 1: SETUP_WORDS */}
         {view.phase === "SETUP_WORDS" && (
           <div className="my-auto w-full max-w-lg space-y-5">
@@ -270,6 +287,8 @@ export function TebakKataBoard({
                     autoFocus
                     maxLength={24}
                     autoComplete="off"
+                    autoCapitalize="characters"
+                    enterKeyHint="next"
                     value={wordDraft}
                     onChange={(e) => {
                       setWordDraft(e.target.value.toUpperCase());
@@ -282,7 +301,7 @@ export function TebakKataBoard({
 
                 {/* Live blank preview */}
                 {previewSlots.length > 0 && (
-                  <div className="rounded-xl border border-white/10 bg-[#111714]/75 px-4 py-3 text-center">
+                  <div className="rounded-xl border border-white/10 bg-[#111714]/75 px-3 py-3 text-center sm:px-4">
                     <p className="mb-2 text-[11px] uppercase tracking-wider text-[#9c9689]">
                       Tampilan di layar {opponent?.name ?? "lawan"} ({previewLettersCount} huruf)
                     </p>
@@ -297,10 +316,11 @@ export function TebakKataBoard({
                   <input
                     type="text"
                     maxLength={40}
+                    enterKeyHint="done"
                     value={clueDraft}
                     onChange={(e) => setClueDraft(e.target.value)}
                     placeholder="Misal: Minuman favorit kita"
-                    className="w-full rounded-xl border border-white/12 bg-[#111512]/80 px-4 py-2.5 text-sm text-[#ebe5d8] placeholder-[#6b665d] outline-none focus:border-[#d4a24c]"
+                    className="w-full rounded-xl border border-white/12 bg-[#111512]/80 px-4 py-2.5 text-base text-[#ebe5d8] placeholder-[#6b665d] outline-none focus:border-[#d4a24c] sm:text-sm"
                   />
                 </div>
 
@@ -310,7 +330,7 @@ export function TebakKataBoard({
 
                 <button
                   type="submit"
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#d4a24c] px-5 py-3 text-sm font-semibold text-[#111210] hover:bg-[#dfb263] transition-colors cursor-pointer"
+                  className="flex min-h-[46px] w-full items-center justify-center gap-2 rounded-xl bg-[#d4a24c] px-5 py-3 text-sm font-semibold text-[#111210] hover:bg-[#dfb263] transition-colors cursor-pointer"
                 >
                   <Lock className="h-4 w-4" />
                   Kunci Kata Rahasia
@@ -354,27 +374,27 @@ export function TebakKataBoard({
 
         {/* Phase 2: GUESSING */}
         {view.phase === "GUESSING" && (
-          <div className="flex w-full flex-1 flex-col justify-between gap-6">
+          <div className="flex w-full flex-1 flex-col justify-between gap-4 sm:gap-6">
             {/* Header & Clue */}
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[#b8c4ba]">
-              <span>
+              <span className="truncate">
                 Tebak kata milik{" "}
                 <strong className="text-[#ebe5d8]">{opponent?.name ?? "Lawan"}</strong>
               </span>
-              <span className="font-mono-tabular text-[#cfc8ba]">
+              <span className="font-mono-tabular shrink-0 text-[#cfc8ba]">
                 {view.targetWordCount} kata • {view.targetLetterCount} huruf
               </span>
             </div>
 
             {view.opponentClue && (
-              <div className="mx-auto inline-flex items-center gap-1.5 rounded-full border border-[#d4a24c]/35 bg-[#232015]/90 px-3.5 py-1 text-xs text-[#f3dfb8]">
-                <Sparkles className="h-3.5 w-3.5 text-[#d4a24c]" />
-                <span>Petunjuk: {view.opponentClue}</span>
+              <div className="mx-auto inline-flex max-w-full items-center gap-1.5 rounded-2xl border border-[#d4a24c]/35 bg-[#232015]/90 px-3.5 py-1.5 text-center text-xs text-[#f3dfb8] sm:rounded-full sm:py-1">
+                <Sparkles className="h-3.5 w-3.5 shrink-0 text-[#d4a24c]" />
+                <span className="break-words">Petunjuk: {view.opponentClue}</span>
               </div>
             )}
 
             {/* Word Blanks UI ______ */}
-            <div className="my-2 flex flex-col items-center justify-center py-2">
+            <div className="my-1 flex w-full flex-col items-center justify-center py-2 sm:my-2">
               <SlotRow slots={view.opponentSlots} />
             </div>
 
@@ -392,17 +412,19 @@ export function TebakKataBoard({
                   autoFocus
                   maxLength={40}
                   autoComplete="off"
+                  autoCapitalize="characters"
+                  enterKeyHint="send"
                   value={guessDraft}
                   onChange={(e) => {
                     setGuessDraft(e.target.value.toUpperCase());
                     if (localError) setLocalError(null);
                   }}
                   placeholder="Ketik tebakan kata/frasa..."
-                  className="font-mono-tabular flex-1 rounded-xl border border-white/15 bg-[#111512]/95 px-4 py-3 text-base uppercase tracking-wider text-[#ebe5d8] placeholder-[#6b665d] outline-none focus:border-[#d4a24c]"
+                  className="font-mono-tabular min-w-0 flex-1 rounded-xl border border-white/15 bg-[#111512]/95 px-4 py-3 text-base uppercase tracking-wider text-[#ebe5d8] placeholder-[#6b665d] outline-none focus:border-[#d4a24c]"
                 />
                 <button
                   type="submit"
-                  className="flex items-center justify-center gap-2 rounded-xl bg-[#d4a24c] px-5 py-3 text-sm font-semibold text-[#111210] hover:bg-[#dfb263] transition-colors cursor-pointer"
+                  className="flex min-h-[46px] shrink-0 items-center justify-center gap-2 rounded-xl bg-[#d4a24c] px-5 py-3 text-sm font-semibold text-[#111210] hover:bg-[#dfb263] transition-colors cursor-pointer"
                 >
                   <Send className="h-4 w-4" />
                   Tebak
@@ -488,7 +510,7 @@ export function TebakKataBoard({
                   type="button"
                   disabled={iAmReady}
                   onClick={() => onAction({ type: "NEXT_ROUND" })}
-                  className="rounded-xl bg-[#d4a24c] px-6 py-2.5 text-sm font-semibold text-[#111210] hover:bg-[#dfb263] disabled:cursor-default disabled:opacity-65 transition-colors cursor-pointer"
+                  className="min-h-[44px] w-full rounded-xl bg-[#d4a24c] px-6 py-2.5 text-sm font-semibold text-[#111210] hover:bg-[#dfb263] disabled:cursor-default disabled:opacity-65 transition-colors cursor-pointer sm:w-auto"
                 >
                   {iAmReady
                     ? `Menunggu ${opponent?.name ?? "lawan"}... (${readyCount}/2)`
@@ -542,7 +564,7 @@ export function TebakKataBoard({
               {me && (
                 <button
                   onClick={() => onSetReady(!me.ready)}
-                  className={`rounded-lg border px-4 py-2 text-xs font-medium transition-colors cursor-pointer ${
+                  className={`min-h-[42px] rounded-lg border px-4 py-2 text-xs font-medium transition-colors cursor-pointer ${
                     me.ready
                       ? "border-emerald-400/50 bg-emerald-500/20 text-emerald-200"
                       : "border-white/20 bg-[#131b16] text-[#ebe5d8]"
@@ -554,13 +576,13 @@ export function TebakKataBoard({
               <button
                 onClick={onStartMatch}
                 disabled={!bothReady}
-                className="rounded-lg bg-[#d9483b] px-4 py-2 text-xs font-semibold text-white disabled:opacity-35 cursor-pointer"
+                className="min-h-[42px] rounded-lg bg-[#d9483b] px-4 py-2 text-xs font-semibold text-white disabled:opacity-35 cursor-pointer"
               >
                 Mulai
               </button>
               <button
                 onClick={onReturnToLobby}
-                className="rounded-lg border border-white/15 px-4 py-2 text-xs text-[#cfc8ba] hover:bg-white/8 cursor-pointer"
+                className="min-h-[42px] rounded-lg border border-white/15 px-4 py-2 text-xs text-[#cfc8ba] hover:bg-white/8 cursor-pointer"
               >
                 Lobi
               </button>
@@ -628,7 +650,7 @@ export function TebakKataBoard({
             type="button"
             onClick={() => onAction({ type: "REVEAL_LETTER" })}
             disabled={!view.canRevealLetter}
-            className="flex shrink-0 items-center justify-center gap-2 rounded-lg border border-[#d4a24c]/45 bg-[#221f14] px-4 py-2.5 text-xs font-semibold text-[#f3dfb8] hover:bg-[#2d291a] disabled:cursor-not-allowed disabled:opacity-40 transition-colors cursor-pointer"
+            className="flex min-h-[44px] shrink-0 items-center justify-center gap-2 rounded-lg border border-[#d4a24c]/45 bg-[#221f14] px-4 py-2.5 text-xs font-semibold text-[#f3dfb8] hover:bg-[#2d291a] disabled:cursor-not-allowed disabled:opacity-40 transition-colors cursor-pointer"
           >
             <Lightbulb className="h-3.5 w-3.5 text-[#d4a24c]" />
             {view.canRevealLetter

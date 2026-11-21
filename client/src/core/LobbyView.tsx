@@ -67,9 +67,9 @@ export function EntryScreen({ initialRoomCode, status, onJoin }: EntryScreenProp
   };
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5 py-10">
-      <div className="mb-8">
-        <h1 className="font-display text-4xl tracking-tight text-[#ebe5d8] sm:text-5xl">
+    <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-4 py-6 sm:px-5 sm:py-10">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="font-display text-3xl tracking-tight text-[#ebe5d8] sm:text-5xl">
           {inviteMode ? (
             <>
               Gabung Meja{" "}
@@ -87,7 +87,7 @@ export function EntryScreen({ initialRoomCode, status, onJoin }: EntryScreenProp
       {inviteMode ? (
         <form
           onSubmit={handleJoin}
-          className="space-y-4 rounded-xl border border-white/10 bg-[#171815] p-6"
+          className="space-y-4 rounded-xl border border-white/10 bg-[#171815] p-5 sm:p-6"
         >
           <div>
             <label className="mb-1.5 block text-xs font-medium text-[#9c9689]">
@@ -97,10 +97,11 @@ export function EntryScreen({ initialRoomCode, status, onJoin }: EntryScreenProp
               type="text"
               maxLength={24}
               autoFocus
+              enterKeyHint="go"
               value={playerName}
               onChange={(e) => setPlayerName(e.target.value)}
               placeholder="Nama panggilan..."
-              className="w-full rounded-lg border border-white/12 bg-[#111210] px-3.5 py-2.5 text-sm text-[#ebe5d8] placeholder-[#6b665d] outline-none focus:border-[#d4a24c]"
+              className="w-full rounded-lg border border-white/12 bg-[#111210] px-3.5 py-2.5 text-base text-[#ebe5d8] placeholder-[#6b665d] outline-none focus:border-[#d4a24c] sm:text-sm"
             />
           </div>
 
@@ -109,7 +110,7 @@ export function EntryScreen({ initialRoomCode, status, onJoin }: EntryScreenProp
           <button
             type="submit"
             disabled={status === "connecting"}
-            className="w-full rounded-lg bg-[#d4a24c] px-4 py-2.5 text-sm font-semibold text-[#111210] hover:bg-[#dfb263] disabled:opacity-50 transition-colors cursor-pointer"
+            className="min-h-[44px] w-full rounded-lg bg-[#d4a24c] px-4 py-2.5 text-sm font-semibold text-[#111210] hover:bg-[#dfb263] disabled:opacity-50 transition-colors cursor-pointer"
           >
             {status === "connecting" ? "Masuk..." : `Masuk Meja ${roomCode}`}
           </button>
@@ -117,13 +118,13 @@ export function EntryScreen({ initialRoomCode, status, onJoin }: EntryScreenProp
           <button
             type="button"
             onClick={switchToCreateMode}
-            className="w-full pt-1 text-center text-xs text-[#9c9689] hover:text-[#ebe5d8] transition-colors cursor-pointer"
+            className="min-h-[36px] w-full pt-1 text-center text-xs text-[#9c9689] hover:text-[#ebe5d8] transition-colors cursor-pointer"
           >
             Atau buat meja baru
           </button>
         </form>
       ) : (
-        <div className="space-y-5 rounded-xl border border-white/10 bg-[#171815] p-6">
+        <div className="space-y-5 rounded-xl border border-white/10 bg-[#171815] p-5 sm:p-6">
           <div>
             <label className="mb-1.5 block text-xs font-medium text-[#9c9689]">
               Nama
@@ -134,7 +135,7 @@ export function EntryScreen({ initialRoomCode, status, onJoin }: EntryScreenProp
               value={playerName}
               onChange={(e) => setPlayerName(e.target.value)}
               placeholder="Nama panggilan..."
-              className="w-full rounded-lg border border-white/12 bg-[#111210] px-3.5 py-2.5 text-sm text-[#ebe5d8] placeholder-[#6b665d] outline-none focus:border-[#d4a24c]"
+              className="w-full rounded-lg border border-white/12 bg-[#111210] px-3.5 py-2.5 text-base text-[#ebe5d8] placeholder-[#6b665d] outline-none focus:border-[#d4a24c] sm:text-sm"
             />
           </div>
 
@@ -144,7 +145,7 @@ export function EntryScreen({ initialRoomCode, status, onJoin }: EntryScreenProp
             type="button"
             onClick={handleCreate}
             disabled={creating || status === "connecting"}
-            className="w-full rounded-lg bg-[#d4a24c] px-4 py-2.5 text-sm font-semibold text-[#111210] hover:bg-[#dfb263] disabled:opacity-50 transition-colors cursor-pointer"
+            className="min-h-[44px] w-full rounded-lg bg-[#d4a24c] px-4 py-2.5 text-sm font-semibold text-[#111210] hover:bg-[#dfb263] disabled:opacity-50 transition-colors cursor-pointer"
           >
             {creating ? "Membuat meja..." : "Buat Meja Baru"}
           </button>
@@ -154,15 +155,17 @@ export function EntryScreen({ initialRoomCode, status, onJoin }: EntryScreenProp
               <input
                 type="text"
                 maxLength={12}
+                enterKeyHint="go"
+                autoCapitalize="characters"
                 value={roomCode}
                 onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
                 placeholder="Kode room"
-                className="font-mono-tabular flex-1 rounded-lg border border-white/12 bg-[#111210] px-3.5 py-2.5 text-sm uppercase tracking-wider text-[#ebe5d8] placeholder-[#6b665d] outline-none focus:border-[#d4a24c]"
+                className="font-mono-tabular min-w-0 flex-1 rounded-lg border border-white/12 bg-[#111210] px-3.5 py-2.5 text-base uppercase tracking-wider text-[#ebe5d8] placeholder-[#6b665d] outline-none focus:border-[#d4a24c] sm:text-sm"
               />
               <button
                 type="submit"
                 disabled={status === "connecting"}
-                className="rounded-lg border border-white/15 bg-[#20221d] px-4 py-2.5 text-sm font-medium text-[#ebe5d8] hover:bg-[#2a2d26] disabled:opacity-50 transition-colors cursor-pointer"
+                className="min-h-[44px] shrink-0 rounded-lg border border-white/15 bg-[#20221d] px-4 py-2.5 text-sm font-medium text-[#ebe5d8] hover:bg-[#2a2d26] disabled:opacity-50 transition-colors cursor-pointer"
               >
                 Masuk
               </button>
@@ -205,18 +208,18 @@ export function LobbyView({
   };
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-10">
-      <div className="space-y-6">
+    <div className="mx-auto max-w-2xl px-3.5 py-5 sm:px-4 sm:py-10">
+      <div className="space-y-5 sm:space-y-6">
         {/* Room & Invite */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4 sm:pb-5">
           <div>
-            <h2 className="font-display text-3xl text-[#ebe5d8]">
+            <h2 className="font-display text-2xl text-[#ebe5d8] sm:text-3xl">
               Meja <span className="font-mono-tabular text-[#d4a24c]">{room.roomId}</span>
             </h2>
           </div>
           <button
             onClick={copyInvite}
-            className="flex items-center gap-2 rounded-lg border border-white/12 bg-[#1a1c18] px-3.5 py-2 text-xs font-medium text-[#ebe5d8] hover:bg-[#232620] transition-colors cursor-pointer"
+            className="flex min-h-[40px] items-center gap-2 rounded-lg border border-white/12 bg-[#1a1c18] px-3.5 py-2 text-xs font-medium text-[#ebe5d8] hover:bg-[#232620] transition-colors cursor-pointer"
           >
             {copiedLink ? (
               <>
@@ -233,14 +236,14 @@ export function LobbyView({
         </div>
 
         {/* Players */}
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3">
           {[0, 1].map((seatIndex) => {
             const occupant = room.players.find((p) => p.seat === seatIndex);
             const isMe = occupant?.id === playerId;
             return (
               <div
                 key={seatIndex}
-                className={`flex items-center justify-between rounded-lg border px-4 py-3.5 ${
+                className={`flex items-center justify-between gap-2 rounded-lg border px-3.5 py-3 sm:px-4 sm:py-3.5 ${
                   occupant
                     ? occupant.ready
                       ? "border-emerald-500/40 bg-[#151e19]"
@@ -248,15 +251,15 @@ export function LobbyView({
                     : "border-dashed border-white/10 bg-[#141512]"
                 }`}
               >
-                <div>
-                  <p className="text-sm font-medium text-[#ebe5d8]">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-[#ebe5d8]">
                     {occupant ? occupant.name : "Menunggu pemain..."}
                     {isMe && <span className="ml-1.5 text-xs text-[#9c9689]">(kamu)</span>}
                   </p>
                 </div>
                 {occupant && (
                   <span
-                    className={`text-xs font-medium ${
+                    className={`shrink-0 text-xs font-medium ${
                       occupant.ready ? "text-emerald-400" : "text-[#9c9689]"
                     }`}
                   >
@@ -278,18 +281,20 @@ export function LobbyView({
                 <button
                   key={game.id}
                   onClick={() => onSelectGame(game.id)}
-                  className={`flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left transition-colors cursor-pointer ${
+                  className={`flex w-full items-center justify-between gap-3 rounded-lg border px-3.5 py-3 text-left transition-colors cursor-pointer sm:px-4 ${
                     selected
                       ? "border-[#d4a24c]/60 bg-[#1c2019]"
                       : "border-white/10 bg-[#171815] hover:border-white/20"
                   }`}
                 >
-                  <div>
-                    <div className="font-display text-lg text-[#ebe5d8]">{game.name}</div>
-                    <div className="text-xs text-[#9c9689]">{game.tagline}</div>
+                  <div className="min-w-0">
+                    <div className="font-display text-base text-[#ebe5d8] sm:text-lg">
+                      {game.name}
+                    </div>
+                    <div className="text-xs leading-relaxed text-[#9c9689]">{game.tagline}</div>
                   </div>
                   {selected && (
-                    <span className="h-2 w-2 rounded-full bg-[#d4a24c]" />
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#d4a24c]" />
                   )}
                 </button>
               );
@@ -311,22 +316,22 @@ export function LobbyView({
             value={stakeDraft}
             onChange={(e) => setStakeDraft(e.target.value)}
             placeholder="Taruhan (opsional), misal: traktir kopi"
-            className="flex-1 rounded-lg border border-white/12 bg-[#171815] px-3.5 py-2.5 text-sm text-[#ebe5d8] placeholder-[#6b665d] outline-none focus:border-[#d4a24c]"
+            className="min-w-0 flex-1 rounded-lg border border-white/12 bg-[#171815] px-3.5 py-2.5 text-base text-[#ebe5d8] placeholder-[#6b665d] outline-none focus:border-[#d4a24c] sm:text-sm"
           />
           <button
             type="submit"
-            className="rounded-lg border border-white/12 bg-[#20221d] px-4 py-2.5 text-xs font-medium text-[#ebe5d8] hover:bg-[#2a2d26] transition-colors cursor-pointer"
+            className="min-h-[44px] shrink-0 rounded-lg border border-white/12 bg-[#20221d] px-4 py-2.5 text-xs font-medium text-[#ebe5d8] hover:bg-[#2a2d26] transition-colors cursor-pointer"
           >
             Simpan
           </button>
         </form>
 
         {/* Actions */}
-        <div className="flex items-center justify-end gap-2.5 pt-2">
-          {me && (
+        <div className="grid grid-cols-2 gap-2.5 pt-2 sm:flex sm:items-center sm:justify-end">
+          {me ? (
             <button
               onClick={() => onSetReady(!me.ready)}
-              className={`rounded-lg border px-5 py-2.5 text-sm font-medium transition-colors cursor-pointer ${
+              className={`min-h-[46px] rounded-lg border px-5 py-2.5 text-sm font-medium transition-colors cursor-pointer ${
                 me.ready
                   ? "border-emerald-500/45 bg-emerald-500/15 text-emerald-300"
                   : "border-white/15 bg-[#1b1d19] text-[#ebe5d8] hover:bg-[#242721]"
@@ -334,12 +339,16 @@ export function LobbyView({
             >
               {me.ready ? "✓ Siap" : "Siap"}
             </button>
+          ) : (
+            <div className="hidden sm:block" />
           )}
 
           <button
             onClick={onStartMatch}
             disabled={!bothReady}
-            className="rounded-lg bg-[#d9483b] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#e15a4e] disabled:cursor-not-allowed disabled:opacity-35 transition-colors cursor-pointer"
+            className={`min-h-[46px] rounded-lg bg-[#d9483b] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#e15a4e] disabled:cursor-not-allowed disabled:opacity-35 transition-colors cursor-pointer ${
+              !me ? "col-span-2 sm:col-span-1" : ""
+            }`}
           >
             Mulai
           </button>

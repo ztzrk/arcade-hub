@@ -102,7 +102,7 @@ export function RevolverModal({
         <motion.div
           initial={{ scale: 0.95, y: 10 }}
           animate={{ scale: 1, y: 0 }}
-          className="w-full max-w-sm rounded-xl border border-white/12 bg-[#161714] p-6 text-center shadow-2xl"
+          className="max-h-[90dvh] w-full max-w-sm overflow-y-auto rounded-xl border border-white/12 bg-[#161714] p-4 text-center shadow-2xl sm:p-6"
         >
           {reveal && (
             <div className="mb-5">
@@ -152,7 +152,7 @@ export function RevolverModal({
                 </p>
                 <button
                   onClick={onDismissOutcome}
-                  className="w-full rounded-lg border border-white/15 bg-[#22241f] py-2.5 text-sm font-medium text-[#ebe5d8] hover:bg-[#2c2f28] transition-colors cursor-pointer"
+                  className="min-h-[46px] w-full rounded-lg border border-white/15 bg-[#22241f] py-2.5 text-sm font-medium text-[#ebe5d8] hover:bg-[#2c2f28] transition-colors cursor-pointer"
                 >
                   Lanjut
                 </button>
@@ -168,7 +168,7 @@ export function RevolverModal({
                 {isMyPull && (
                   <button
                     onClick={onPullTrigger}
-                    className="w-full rounded-lg bg-[#d9483b] py-3 text-sm font-semibold text-white hover:bg-[#e15a4e] transition-colors cursor-pointer"
+                    className="min-h-[46px] w-full rounded-lg bg-[#d9483b] py-3 text-sm font-semibold text-white hover:bg-[#e15a4e] transition-colors cursor-pointer"
                   >
                     Tarik Pelatuk ({targetShots + 1}/{maxChambers})
                   </button>

@@ -40,16 +40,16 @@ export function GlobalTopBar({
   };
 
   return (
-    <header className="sticky top-0 z-30 border-b border-white/8 bg-[#111210]/90 backdrop-blur-md">
-      <div className="mx-auto flex h-13 max-w-5xl items-center justify-between gap-3 px-4">
+    <header className="sticky top-0 z-30 border-b border-white/8 bg-[#111210]/90 pt-[env(safe-area-inset-top)] backdrop-blur-md">
+      <div className="mx-auto flex h-12 max-w-5xl items-center justify-between gap-1.5 px-2.5 sm:h-13 sm:gap-3 sm:px-4">
         {/* Room Code */}
         <button
           onClick={copyRoomLink}
-          className="flex items-center gap-2 rounded-md px-2 py-1 text-xs text-[#9c9689] hover:bg-white/5 hover:text-[#ebe5d8] transition-colors cursor-pointer"
+          className="flex min-h-[36px] shrink-0 items-center gap-1.5 rounded-md px-1.5 py-1 text-xs text-[#9c9689] hover:bg-white/5 hover:text-[#ebe5d8] transition-colors cursor-pointer sm:gap-2 sm:px-2"
           title="Salin link room"
         >
           <span
-            className={`h-1.5 w-1.5 rounded-full ${
+            className={`h-1.5 w-1.5 shrink-0 rounded-full ${
               status === "connected" ? "bg-emerald-500" : "bg-amber-400 animate-pulse"
             }`}
           />
@@ -57,26 +57,26 @@ export function GlobalTopBar({
             {room.roomId}
           </span>
           {copied ? (
-            <Check className="h-3.5 w-3.5 text-emerald-400" />
+            <Check className="h-3.5 w-3.5 shrink-0 text-emerald-400" />
           ) : (
-            <Copy className="h-3.5 w-3.5 opacity-60" />
+            <Copy className="h-3.5 w-3.5 shrink-0 opacity-60" />
           )}
         </button>
 
         {/* Scoreboard */}
-        <div className="flex items-center gap-2.5 text-sm">
+        <div className="flex min-w-0 items-center gap-1.5 text-xs sm:gap-2.5 sm:text-sm">
           <span
-            className={`max-w-[90px] truncate ${
+            className={`max-w-[56px] truncate sm:max-w-[110px] ${
               p1?.id === playerId ? "font-semibold text-[#ebe5d8]" : "text-[#9c9689]"
             }`}
           >
             {p1?.name ?? "..."}
           </span>
-          <span className="font-mono-tabular rounded bg-[#1b1d1a] px-2.5 py-0.5 text-xs font-bold text-[#d4a24c]">
+          <span className="font-mono-tabular shrink-0 rounded bg-[#1b1d1a] px-2 py-0.5 text-xs font-bold text-[#d4a24c] sm:px-2.5">
             {p1?.score ?? 0} : {p2?.score ?? 0}
           </span>
           <span
-            className={`max-w-[90px] truncate ${
+            className={`max-w-[56px] truncate sm:max-w-[110px] ${
               p2?.id === playerId ? "font-semibold text-[#ebe5d8]" : "text-[#9c9689]"
             }`}
           >
@@ -85,45 +85,56 @@ export function GlobalTopBar({
         </div>
 
         {/* Utility Controls */}
-        <div className="relative flex items-center gap-1">
+        <div className="relative flex shrink-0 items-center gap-0.5 sm:gap-1">
           <button
             onClick={() => setTauntOpen((v) => !v)}
-            className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-[#cfc8ba] hover:bg-white/8 hover:text-[#ebe5d8] transition-colors cursor-pointer"
+            className="flex min-h-[36px] min-w-[36px] items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-[#cfc8ba] hover:bg-white/8 hover:text-[#ebe5d8] transition-colors cursor-pointer sm:px-2.5"
+            title="Kirim Taunt"
+            aria-label="Kirim Taunt"
           >
-            <MessageSquare className="h-3.5 w-3.5" />
+            <MessageSquare className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
             <span className="hidden sm:inline">Taunt</span>
           </button>
 
           {tauntOpen && (
-            <div className="absolute right-0 top-10 z-40 grid w-56 grid-cols-2 gap-1 rounded-lg border border-white/12 bg-[#191a17] p-1.5 shadow-2xl">
-              {TAUNT_EMOTES.map((emote) => (
-                <button
-                  key={emote.id}
-                  onClick={() => {
-                    onSendTaunt(emote.id);
-                    setTauntOpen(false);
-                  }}
-                  className="flex items-center gap-1.5 rounded px-2 py-1.5 text-left text-xs text-[#ebe5d8] hover:bg-white/8 transition-colors cursor-pointer"
-                >
-                  <span>{emote.emoji}</span>
-                  <span className="truncate">{emote.label}</span>
-                </button>
-              ))}
-            </div>
+            <>
+              <div
+                className="fixed inset-0 z-30"
+                onClick={() => setTauntOpen(false)}
+                aria-hidden="true"
+              />
+              <div className="absolute right-0 top-11 z-40 grid w-60 max-w-[calc(100vw-1.25rem)] grid-cols-2 gap-1 rounded-lg border border-white/12 bg-[#191a17] p-1.5 shadow-2xl">
+                {TAUNT_EMOTES.map((emote) => (
+                  <button
+                    key={emote.id}
+                    onClick={() => {
+                      onSendTaunt(emote.id);
+                      setTauntOpen(false);
+                    }}
+                    className="flex min-h-[40px] items-center gap-1.5 rounded px-2.5 py-2 text-left text-xs text-[#ebe5d8] hover:bg-white/8 transition-colors cursor-pointer"
+                  >
+                    <span>{emote.emoji}</span>
+                    <span className="truncate">{emote.label}</span>
+                  </button>
+                ))}
+              </div>
+            </>
           )}
 
           <button
             onClick={toggleMute}
-            className="rounded-md p-1.5 text-[#9c9689] hover:bg-white/8 hover:text-[#ebe5d8] transition-colors cursor-pointer"
+            className="flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md p-1.5 text-[#9c9689] hover:bg-white/8 hover:text-[#ebe5d8] transition-colors cursor-pointer"
             title={muted ? "Aktifkan suara" : "Bisukan suara"}
+            aria-label={muted ? "Aktifkan suara" : "Bisukan suara"}
           >
             {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
           </button>
 
           <button
             onClick={onLeaveRoom}
-            className="rounded-md p-1.5 text-[#9c9689] hover:bg-[#d9483b]/15 hover:text-[#e87066] transition-colors cursor-pointer"
+            className="flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md p-1.5 text-[#9c9689] hover:bg-[#d9483b]/15 hover:text-[#e87066] transition-colors cursor-pointer"
             title="Keluar"
+            aria-label="Keluar"
           >
             <LogOut className="h-4 w-4" />
           </button>
@@ -131,7 +142,7 @@ export function GlobalTopBar({
       </div>
 
       {room.customStake && (
-        <div className="border-t border-white/6 bg-[#161714] px-4 py-1 text-center text-xs text-[#d4a24c]">
+        <div className="border-t border-white/6 bg-[#161714] px-3 py-1 text-center text-[11px] break-words text-[#d4a24c] sm:px-4 sm:text-xs">
           Taruhan: <span className="text-[#ebe5d8]">{room.customStake}</span>
         </div>
       )}

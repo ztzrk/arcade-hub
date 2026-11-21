@@ -32,9 +32,9 @@ export function App() {
   const ActiveGameBoard = room ? getGameComponent(room.selectedGameId) : null;
 
   return (
-    <div className="table-room-bg min-h-screen text-[#ebe5d8]">
+    <div className="table-room-bg min-h-dvh pb-[env(safe-area-inset-bottom)] text-[#ebe5d8]">
       {errorBanner && (
-        <div className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-lg border border-[#d9483b]/60 bg-[#231413]/95 px-4 py-2 text-xs font-medium text-[#f5b4ae] shadow-xl">
+        <div className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-lg border border-[#d9483b]/60 bg-[#231413]/95 px-4 py-2.5 text-center text-xs font-medium text-[#f5b4ae] shadow-xl">
           {errorBanner}
         </div>
       )}
@@ -43,7 +43,7 @@ export function App() {
 
       {!room ? (
         resumingRoomId && (status === "connecting" || status === "reconnecting") ? (
-          <div className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-4 px-5 text-center">
+          <div className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-4 px-5 text-center">
             <div className="space-y-1.5">
               <p className="font-display text-2xl text-[#ebe5d8]">
                 Meja{" "}
@@ -58,7 +58,7 @@ export function App() {
             <button
               type="button"
               onClick={leaveRoom}
-              className="rounded-lg border border-white/12 bg-[#171815] px-4 py-2 text-xs text-[#9c9689] hover:text-[#ebe5d8] transition-colors cursor-pointer"
+              className="min-h-[44px] rounded-lg border border-white/12 bg-[#171815] px-5 py-2.5 text-xs text-[#9c9689] hover:text-[#ebe5d8] transition-colors cursor-pointer"
             >
               Batal
             </button>
