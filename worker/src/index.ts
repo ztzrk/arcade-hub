@@ -15,11 +15,46 @@ function generateRoomCode(length = 6): string {
   return code;
 }
 
+function isOriginAllowed(origin: string, allowedRaw: string): boolean {
+  const allowedList = allowedRaw
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  for (const allowed of allowedList) {
+    if (origin === allowed) return true;
+    // Allow preview deployments of a configured *.pages.dev project
+    try {
+      const allowedUrl = new URL(allowed);
+      const originUrl = new URL(origin);
+      if (
+        allowedUrl.protocol === originUrl.protocol &&
+        allowedUrl.hostname.endsWith(".pages.dev") &&
+        originUrl.hostname.endsWith(`.${allowedUrl.hostname}`)
+      ) {
+        return true;
+      }
+    } catch {
+      // ignore invalid URL entries
+    }
+  }
+  return false;
+}
+
 function getCorsHeaders(request: Request, env: Env): Record<string, string> {
-  const origin = request.headers.get("Origin") ?? "*";
-  const allowedOrigin = env.ALLOWED_ORIGIN;
-  const allowValue =
-    allowedOrigin && origin !== allowedOrigin ? allowedOrigin : origin;
+  const origin = request.headers.get("Origin") ?? "";
+  const allowedRaw = env.ALLOWED_ORIGIN?.trim();
+
+  let allowValue = "*";
+  if (allowedRaw) {
+    if (origin && isOriginAllowed(origin, allowedRaw)) {
+      allowValue = origin;
+    } else {
+      allowValue = allowedRaw.split(",")[0]?.trim() || allowedRaw;
+    }
+  } else if (origin) {
+    allowValue = origin;
+  }
 
   return {
     "Access-Control-Allow-Origin": allowValue,
