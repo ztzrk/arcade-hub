@@ -1,9 +1,11 @@
 import type { GameMeta } from "@arcade-hub/shared";
 import type { IGameEngine } from "./IGameEngine.ts";
 import { liarsDeckEngine } from "./LiarsDeckEngine.ts";
+import { tebakKataEngine } from "./TebakKataEngine.ts";
 
 const engines = new Map<string, IGameEngine<any, any, any>>([
   [liarsDeckEngine.id, liarsDeckEngine],
+  [tebakKataEngine.id, tebakKataEngine],
 ]);
 
 export function getEngine(gameId: string): IGameEngine<any, any, any> | undefined {

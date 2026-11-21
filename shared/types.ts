@@ -110,6 +110,62 @@ export interface LiarsDeckView {
 }
 
 /* -------------------------------------------------------------------------- */
+/*  Game #2: Tebak Kata (1v1 Word Duel)                                       */
+/* -------------------------------------------------------------------------- */
+
+export type TebakKataPhase =
+  | "SETUP_WORDS"
+  | "GUESSING"
+  | "ROUND_END"
+  | "MATCH_END";
+
+export type TebakKataSlot =
+  | { kind: "blank" }
+  | { kind: "space" }
+  | { kind: "letter"; char: string };
+
+export type TebakKataAction =
+  | { type: "SUBMIT_WORD"; word: string; clue?: string }
+  | { type: "SUBMIT_GUESS"; guess: string }
+  | { type: "REVEAL_LETTER" }
+  | { type: "NEXT_ROUND" };
+
+export interface TebakKataRoundSummary {
+  roundNumber: number;
+  winnerId: string;
+  words: Record<string, string>;
+  clues: Record<string, string>;
+  guessCounts: Record<string, number>;
+  hintsUsed: Record<string, number>;
+}
+
+export interface TebakKataView {
+  phase: TebakKataPhase;
+  roundNumber: number;
+  targetWins: number;
+  scores: Record<string, number>;
+  myWord: string | null;
+  myClue: string;
+  myWordSubmitted: boolean;
+  opponentWordSubmitted: boolean;
+  opponentClue: string;
+  opponentSlots: TebakKataSlot[];
+  targetWordCount: number;
+  targetLetterCount: number;
+  myGuesses: string[];
+  hintsUsed: number;
+  maxHints: number;
+  opponentProgress: {
+    guessCount: number;
+    hintsUsed: number;
+    revealedIndices: number[];
+  };
+  readyForNextRound: Record<string, boolean>;
+  lastRoundSummary: TebakKataRoundSummary | null;
+  winnerId: string | null;
+}
+
+/* -------------------------------------------------------------------------- */
 /*  WebSocket Messages                                                        */
 /* -------------------------------------------------------------------------- */
 
