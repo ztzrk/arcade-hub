@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import type { LiarsDeckOutcome, LiarsDeckReveal, PublicPlayer } from "@arcade-hub/shared";
 import { soundManager } from "../../shared/audio";
 import { PlayingCard } from "./PlayingCard";
@@ -30,7 +30,7 @@ function CylinderSvg({
 }) {
   const angleStep = 360 / maxChambers;
   return (
-    <motion.svg
+    <m.svg
       viewBox="0 0 120 120"
       className="h-24 w-24"
       animate={spinning ? { rotate: 360 } : { rotate: 0 }}
@@ -57,7 +57,7 @@ function CylinderSvg({
           />
         );
       })}
-    </motion.svg>
+    </m.svg>
   );
 }
 
@@ -93,13 +93,13 @@ export function RevolverModal({
 
   return (
     <AnimatePresence>
-      <motion.div
+      <m.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
       >
-        <motion.div
+        <m.div
           initial={{ scale: 0.95, y: 10 }}
           animate={{ scale: 1, y: 0 }}
           className="max-h-[90dvh] w-full max-w-sm overflow-y-auto rounded-xl border border-white/12 bg-[#161714] p-4 text-center shadow-2xl sm:p-6"
@@ -176,8 +176,8 @@ export function RevolverModal({
               </>
             )}
           </div>
-        </motion.div>
-      </motion.div>
+        </m.div>
+      </m.div>
     </AnimatePresence>
   );
 }

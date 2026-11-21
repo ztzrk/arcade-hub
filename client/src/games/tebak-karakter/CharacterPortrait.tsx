@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { TebakKarakterCharacter } from "@arcade-hub/shared";
 
 interface CharacterPortraitProps {
@@ -5,7 +6,7 @@ interface CharacterPortraitProps {
   className?: string;
 }
 
-export function CharacterPortrait({
+export const CharacterPortrait = memo(function CharacterPortrait({
   character,
   className = "h-full w-full",
 }: CharacterPortraitProps) {
@@ -467,4 +468,4 @@ export function CharacterPortrait({
       )}
     </svg>
   );
-}
+});

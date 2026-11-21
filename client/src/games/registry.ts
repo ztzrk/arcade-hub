@@ -1,12 +1,28 @@
-import type { ComponentType } from "react";
+import { lazy, type ComponentType, type LazyExoticComponent } from "react";
 import type { GameMeta } from "@arcade-hub/shared";
-import { LiarsDeckBoard, type GameBoardProps } from "./liars-deck/LiarsDeckBoard";
-import { TebakKarakterBoard } from "./tebak-karakter/TebakKarakterBoard";
-import { TebakKataBoard } from "./tebak-kata/TebakKataBoard";
+import type { GameBoardProps } from "./liars-deck/LiarsDeckBoard";
 
 export interface RegisteredGame extends GameMeta {
-  Component: ComponentType<GameBoardProps>;
+  Component: LazyExoticComponent<ComponentType<GameBoardProps>>;
 }
+
+const LiarsDeckBoard = lazy(() =>
+  import("./liars-deck/LiarsDeckBoard").then((m) => ({
+    default: m.LiarsDeckBoard,
+  }))
+);
+
+const TebakKataBoard = lazy(() =>
+  import("./tebak-kata/TebakKataBoard").then((m) => ({
+    default: m.TebakKataBoard,
+  }))
+);
+
+const TebakKarakterBoard = lazy(() =>
+  import("./tebak-karakter/TebakKarakterBoard").then((m) => ({
+    default: m.TebakKarakterBoard,
+  }))
+);
 
 export const REGISTERED_GAMES: RegisteredGame[] = [
   {
@@ -35,6 +51,8 @@ export const REGISTERED_GAMES: RegisteredGame[] = [
   },
 ];
 
-export function getGameComponent(gameId: string): ComponentType<GameBoardProps> | null {
+export function getGameComponent(
+  gameId: string
+): LazyExoticComponent<ComponentType<GameBoardProps>> | null {
   return REGISTERED_GAMES.find((g) => g.id === gameId)?.Component ?? null;
 }

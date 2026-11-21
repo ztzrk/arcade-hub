@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, m } from "framer-motion";
 import { TAUNT_EMOTES } from "@arcade-hub/shared";
 import type { FloatingTaunt } from "./useGameSocket";
 
@@ -15,7 +15,7 @@ export function TauntOverlay({ taunts, myPlayerId }: TauntOverlayProps) {
           const meta = TAUNT_EMOTES.find((t) => t.id === taunt.emoteId);
           const isMine = taunt.fromPlayerId === myPlayerId;
           return (
-            <motion.div
+            <m.div
               key={taunt.uid}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -30,7 +30,7 @@ export function TauntOverlay({ taunts, myPlayerId }: TauntOverlayProps) {
               <span className="shrink-0">{meta?.emoji ?? "💬"}</span>
               <span className="max-w-[100px] truncate font-semibold">{taunt.fromName}:</span>
               <span className="truncate">{meta?.label ?? taunt.emoteId}</span>
-            </motion.div>
+            </m.div>
           );
         })}
       </AnimatePresence>

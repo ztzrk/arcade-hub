@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import { Check, Eye, EyeOff, Lightbulb, Lock, Send, Sparkles } from "lucide-react";
 import type {
   TebakKataSlot,
@@ -78,26 +78,32 @@ function SlotRow({
         >
           {group.map((slot, charIdx) => {
             const isLetter = slot.kind === "letter";
-            return (
-              <motion.div
-                key={`${wordIdx}-${charIdx}-${isLetter ? slot.char : "blank"}`}
-                initial={isLetter ? { scale: 0.8, rotateX: 70, opacity: 0.4 } : false}
-                animate={{ scale: 1, rotateX: 0, opacity: 1 }}
-                transition={{ duration: 0.22 }}
-                className={`font-mono-tabular flex items-center justify-center rounded-lg border font-bold uppercase select-none ${tileSizeClass} ${
-                  isLetter
-                    ? "border-[#d4a24c]/70 bg-[#252318] text-[#f3dfb8] shadow-inner"
-                    : "border-white/15 bg-[#111915]/85 text-[#8a998d]"
-                }`}
-              >
-                {isLetter ? (
-                  slot.char
-                ) : (
+            const slotClass = `font-mono-tabular flex items-center justify-center rounded-lg border font-bold uppercase select-none ${tileSizeClass} ${
+              isLetter
+                ? "border-[#d4a24c]/70 bg-[#252318] text-[#f3dfb8] shadow-inner"
+                : "border-white/15 bg-[#111915]/85 text-[#8a998d]"
+            }`;
+
+            if (!isLetter) {
+              return (
+                <div key={`${wordIdx}-${charIdx}-blank`} className={slotClass}>
                   <span
                     className={`block rounded-full bg-[#cfc8ba]/65 ${blankDashClass}`}
                   />
-                )}
-              </motion.div>
+                </div>
+              );
+            }
+
+            return (
+              <m.div
+                key={`${wordIdx}-${charIdx}-${slot.char}`}
+                initial={{ scale: 0.8, rotateX: 70, opacity: 0.4 }}
+                animate={{ scale: 1, rotateX: 0, opacity: 1 }}
+                transition={{ duration: 0.22 }}
+                className={slotClass}
+              >
+                {slot.char}
+              </m.div>
             );
           })}
         </div>
@@ -400,7 +406,7 @@ export function TebakKataBoard({
 
             {/* Guess Input + Reveal 1 Letter */}
             <div className="mx-auto w-full max-w-xl space-y-3">
-              <motion.form
+              <m.form
                 key={wrongShakeKey}
                 animate={wrongShakeKey > 0 ? { x: [0, -7, 7, -5, 5, 0] } : undefined}
                 transition={{ duration: 0.3 }}
@@ -429,7 +435,7 @@ export function TebakKataBoard({
                   <Send className="h-4 w-4" />
                   Tebak
                 </button>
-              </motion.form>
+              </m.form>
 
               <div className="flex flex-wrap items-center justify-between gap-2">
                 {localError ? (

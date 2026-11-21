@@ -1,5 +1,3 @@
-import { Howl, Howler } from "howler";
-
 export type SoundEffect =
   | "click"
   | "bang"
@@ -10,18 +8,9 @@ export type SoundEffect =
   | "wrong"
   | "win";
 
-const SOUND_FILES: Record<"click" | "bang" | "card" | "heartbeat", string> = {
-  click: "/sounds/click.mp3",
-  bang: "/sounds/bang.mp3",
-  card: "/sounds/card.mp3",
-  heartbeat: "/sounds/heartbeat.mp3",
-};
-
 class SoundManager {
   private muted = false;
   private initialized = false;
-  private howls = new Map<string, Howl>();
-  private failedFiles = new Set<string>();
   private audioCtx: AudioContext | null = null;
 
   unlock(): void {
@@ -40,18 +29,6 @@ class SoundManager {
         }
       }
     }
-
-    for (const [key, src] of Object.entries(SOUND_FILES)) {
-      const howl = new Howl({
-        src: [src],
-        preload: true,
-        volume: key === "heartbeat" ? 0.5 : 0.75,
-        onloaderror: () => {
-          this.failedFiles.add(key);
-        },
-      });
-      this.howls.set(key, howl);
-    }
   }
 
   isMuted(): boolean {
@@ -60,21 +37,18 @@ class SoundManager {
 
   setMuted(nextMuted: boolean): void {
     this.muted = nextMuted;
-    Howler.mute(nextMuted);
+    if (this.audioCtx) {
+      if (nextMuted && this.audioCtx.state === "running") {
+        void this.audioCtx.suspend();
+      } else if (!nextMuted && this.audioCtx.state === "suspended") {
+        void this.audioCtx.resume();
+      }
+    }
   }
 
   play(effect: SoundEffect): void {
     if (this.muted) return;
     this.unlock();
-
-    if (effect in SOUND_FILES && !this.failedFiles.has(effect)) {
-      const howl = this.howls.get(effect);
-      if (howl && howl.state() === "loaded") {
-        howl.play();
-        return;
-      }
-    }
-
     this.playSynthFallback(effect);
   }
 

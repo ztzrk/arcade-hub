@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import type { GameEvent, LiarsDeckView, PublicRoomState } from "@arcade-hub/shared";
 import { soundManager } from "../../shared/audio";
 import { PlayingCard } from "./PlayingCard";
@@ -147,7 +147,7 @@ export function LiarsDeckBoard({
               <>
                 <div className="mb-1.5 flex items-center justify-center sm:mb-2">
                   {Array.from({ length: view.lastPlay.count }).map((_, i) => (
-                    <motion.div
+                    <m.div
                       key={i}
                       initial={{ y: -10, opacity: 0 }}
                       animate={{ y: 0, opacity: 1 }}
@@ -155,7 +155,7 @@ export function LiarsDeckBoard({
                       className="-ml-5 first:ml-0 sm:-ml-6"
                     >
                       <PlayingCard faceDown size="sm" />
-                    </motion.div>
+                    </m.div>
                   ))}
                 </div>
                 <p className="text-xs text-[#d6dfd7]">

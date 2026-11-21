@@ -1,4 +1,5 @@
-import { motion } from "framer-motion";
+import { memo } from "react";
+import { m } from "framer-motion";
 import type { CardRank } from "@arcade-hub/shared";
 
 interface PlayingCardProps {
@@ -70,7 +71,7 @@ function CardEmblem({
   );
 }
 
-export function PlayingCard({
+export const PlayingCard = memo(function PlayingCard({
   rank = "ACE",
   faceDown = false,
   selected = false,
@@ -121,7 +122,7 @@ export function PlayingCard({
         : "text-[9px] sm:text-[10px]";
 
   return (
-    <motion.button
+    <m.button
       type="button"
       onClick={onClick}
       disabled={disabled || !onClick}
@@ -150,6 +151,6 @@ export function PlayingCard({
       >
         {meta.short}
       </div>
-    </motion.button>
+    </m.button>
   );
-}
+});

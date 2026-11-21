@@ -139,6 +139,8 @@ export function useGameSocket() {
   const reconnectAttemptRef = useRef(0);
   const reconnectTimerRef = useRef<number | null>(null);
   const pingTimerRef = useRef<number | null>(null);
+  const lastSyncAtRef = useRef(0);
+  const transientTimersRef = useRef<Set<number>>(new Set());
   const intentionalCloseRef = useRef(false);
 
   const clearTimers = useCallback(() => {
@@ -150,6 +152,10 @@ export function useGameSocket() {
       window.clearInterval(pingTimerRef.current);
       pingTimerRef.current = null;
     }
+    for (const timerId of transientTimersRef.current) {
+      window.clearTimeout(timerId);
+    }
+    transientTimersRef.current.clear();
   }, []);
 
   const sendMessage = useCallback((msg: ClientMessage) => {
@@ -244,9 +250,11 @@ export function useGameSocket() {
                 emoteId: msg.emoteId,
               },
             ]);
-            window.setTimeout(() => {
+            const tauntTimer = window.setTimeout(() => {
+              transientTimersRef.current.delete(tauntTimer);
               setTaunts((prev) => prev.filter((item) => item.uid !== uid));
             }, 2600);
+            transientTimersRef.current.add(tauntTimer);
             return;
           }
           case "ERROR": {
@@ -257,9 +265,11 @@ export function useGameSocket() {
               setResumingRoomId(null);
               setStatus("error");
             }
-            window.setTimeout(() => {
+            const errorTimer = window.setTimeout(() => {
+              transientTimersRef.current.delete(errorTimer);
               setErrorBanner((cur) => (cur === msg.message ? null : cur));
             }, 4000);
+            transientTimersRef.current.add(errorTimer);
             return;
           }
           case "PONG":
@@ -337,6 +347,10 @@ export function useGameSocket() {
 
     const syncOnFocus = () => {
       if (document.visibilityState === "hidden") return;
+      const now = Date.now();
+      if (now - lastSyncAtRef.current < 400) return;
+      lastSyncAtRef.current = now;
+
       const creds = activeCredsRef.current;
       if (!creds) return;
 

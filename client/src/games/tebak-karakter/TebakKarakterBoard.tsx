@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
+import { m } from "framer-motion";
 import {
   Check,
   Crosshair,
@@ -510,7 +510,7 @@ export function TebakKarakterBoard({
                     !(guessMode && canGuessNow) || !isEliminated;
 
                   return (
-                    <motion.button
+                    <m.button
                       key={char.id}
                       type="button"
                       whileTap={{ scale: 0.97 }}
@@ -549,7 +549,7 @@ export function TebakKarakterBoard({
                           {char.name}
                         </span>
                       </div>
-                    </motion.button>
+                    </m.button>
                   );
                 })}
               </div>
