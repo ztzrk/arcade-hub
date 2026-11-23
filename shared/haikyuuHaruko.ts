@@ -471,6 +471,36 @@ export const HAIKYUU_PLAYERS: readonly HaikyuuPlayer[] = [
     stats: { attack: 74, defense: 75, serve: 90, brain: 80, speed: 76 },
     tags: ["karasuno", "jump-float"],
   },
+  {
+    id: "ennoshita",
+    name: "Chikara Ennoshita",
+    schoolPackIds: ["karasuno-qualifiers", "karasuno-spring"],
+    schoolLabel: "Karasuno",
+    primaryColor: "#18181b",
+    secondaryColor: "#f97316",
+    number: 6,
+    position: "OH",
+    ovr: 82,
+    tier: "R",
+    roleTitle: "Kapten Masa Depan",
+    stats: { attack: 80, defense: 85, serve: 79, brain: 87, speed: 81 },
+    tags: ["karasuno", "captain", "receive"],
+  },
+  {
+    id: "kinoshita",
+    name: "Hisashi Kinoshita",
+    schoolPackIds: ["karasuno-spring"],
+    schoolLabel: "Karasuno",
+    primaryColor: "#18181b",
+    secondaryColor: "#f97316",
+    number: 7,
+    position: "OH",
+    ovr: 76,
+    tier: "N",
+    roleTitle: "Jump-Float Server",
+    stats: { attack: 74, defense: 77, serve: 88, brain: 79, speed: 75 },
+    tags: ["karasuno", "jump-float"],
+  },
 
   // AOBA JOHSAI
   {
@@ -563,6 +593,36 @@ export const HAIKYUU_PLAYERS: readonly HaikyuuPlayer[] = [
     roleTitle: "Libero Umpan Balik",
     stats: { attack: 60, defense: 86, serve: 60, brain: 84, speed: 85 },
     tags: ["seijoh"],
+  },
+  {
+    id: "kindaichi",
+    name: "Yutaro Kindaichi",
+    schoolPackIds: ["aoba-johsai"],
+    schoolLabel: "Aoba Johsai",
+    primaryColor: "#f8fafc",
+    secondaryColor: "#14b8a6",
+    number: 12,
+    position: "MB",
+    ovr: 85,
+    tier: "R",
+    roleTitle: "Turn Attack Tinggi",
+    stats: { attack: 87, defense: 83, serve: 81, brain: 82, speed: 86 },
+    tags: ["seijoh", "kitagawa"],
+  },
+  {
+    id: "kunimi",
+    name: "Akira Kunimi",
+    schoolPackIds: ["aoba-johsai"],
+    schoolLabel: "Aoba Johsai",
+    primaryColor: "#f8fafc",
+    secondaryColor: "#14b8a6",
+    number: 13,
+    position: "OP",
+    ovr: 85,
+    tier: "R",
+    roleTitle: "Efisiensi Energi Mutlak",
+    stats: { attack: 84, defense: 85, serve: 81, brain: 89, speed: 82 },
+    tags: ["seijoh", "kitagawa", "brain"],
   },
 
   // NEKOMA
@@ -671,6 +731,36 @@ export const HAIKYUU_PLAYERS: readonly HaikyuuPlayer[] = [
     stats: { attack: 88, defense: 82, serve: 76, brain: 74, speed: 89 },
     tags: ["nekoma"],
   },
+  {
+    id: "inuoka",
+    name: "So Inuoka",
+    schoolPackIds: ["nekoma"],
+    schoolLabel: "Nekoma",
+    primaryColor: "#dc2626",
+    secondaryColor: "#18181b",
+    number: 7,
+    position: "OP",
+    ovr: 83,
+    tier: "R",
+    roleTitle: "Pelari & Blocker Cepat",
+    stats: { attack: 84, defense: 83, serve: 77, brain: 78, speed: 91 },
+    tags: ["nekoma"],
+  },
+  {
+    id: "shibayama",
+    name: "Yuki Shibayama",
+    schoolPackIds: ["nekoma"],
+    schoolLabel: "Nekoma",
+    primaryColor: "#18181b",
+    secondaryColor: "#dc2626",
+    number: 12,
+    position: "L",
+    ovr: 79,
+    tier: "N",
+    roleTitle: "Libero Penerus Nekoma",
+    stats: { attack: 55, defense: 84, serve: 55, brain: 80, speed: 84 },
+    tags: ["nekoma"],
+  },
 
   // SHIRATORIZAWA
   {
@@ -762,6 +852,36 @@ export const HAIKYUU_PLAYERS: readonly HaikyuuPlayer[] = [
     roleTitle: "Refleks Gesit",
     stats: { attack: 58, defense: 89, serve: 58, brain: 82, speed: 88 },
     tags: ["shiratorizawa"],
+  },
+  {
+    id: "semi",
+    name: "Eita Semi",
+    schoolPackIds: ["shiratorizawa"],
+    schoolLabel: "Shiratorizawa",
+    primaryColor: "#f8fafc",
+    secondaryColor: "#7e22ce",
+    number: 3,
+    position: "S",
+    ovr: 87,
+    tier: "SR",
+    roleTitle: "Pinch Server & Setter Agresif",
+    stats: { attack: 83, defense: 82, serve: 93, brain: 86, speed: 85 },
+    tags: ["shiratorizawa", "jump-serve"],
+  },
+  {
+    id: "kawanishi",
+    name: "Taichi Kawanishi",
+    schoolPackIds: ["shiratorizawa"],
+    schoolLabel: "Shiratorizawa",
+    primaryColor: "#f8fafc",
+    secondaryColor: "#7e22ce",
+    number: 12,
+    position: "MB",
+    ovr: 84,
+    tier: "R",
+    roleTitle: "Blocker Fleksibel",
+    stats: { attack: 83, defense: 87, serve: 80, brain: 85, speed: 82 },
+    tags: ["shiratorizawa", "read-block"],
   },
 
   // FUKURODANI
@@ -949,6 +1069,36 @@ export const HAIKYUU_PLAYERS: readonly HaikyuuPlayer[] = [
     stats: { attack: 58, defense: 92, serve: 58, brain: 84, speed: 91 },
     tags: ["inarizaki"],
   },
+  {
+    id: "omimi",
+    name: "Ren Omimi",
+    schoolPackIds: ["inarizaki"],
+    schoolLabel: "Inarizaki",
+    primaryColor: "#18181b",
+    secondaryColor: "#9f1239",
+    number: 2,
+    position: "MB",
+    ovr: 88,
+    tier: "SR",
+    roleTitle: "Tembok Tengah 191cm",
+    stats: { attack: 86, defense: 91, serve: 84, brain: 88, speed: 85 },
+    tags: ["inarizaki", "read-block"],
+  },
+  {
+    id: "ginjima",
+    name: "Hitoshi Ginjima",
+    schoolPackIds: ["inarizaki"],
+    schoolLabel: "Inarizaki",
+    primaryColor: "#18181b",
+    secondaryColor: "#9f1239",
+    number: 5,
+    position: "OH",
+    ovr: 87,
+    tier: "SR",
+    roleTitle: "Meriam Sayap Inarizaki",
+    stats: { attack: 89, defense: 84, serve: 88, brain: 83, speed: 87 },
+    tags: ["inarizaki", "jump-serve"],
+  },
 
   // DATE TECH
   {
@@ -1025,6 +1175,21 @@ export const HAIKYUU_PLAYERS: readonly HaikyuuPlayer[] = [
     roleTitle: "Libero Pengawal Tembok",
     stats: { attack: 56, defense: 87, serve: 56, brain: 81, speed: 84 },
     tags: ["date-tech"],
+  },
+  {
+    id: "moniwa",
+    name: "Kaname Moniwa",
+    schoolPackIds: ["date-tech"],
+    schoolLabel: "Date Tech",
+    primaryColor: "#f8fafc",
+    secondaryColor: "#0f766e",
+    number: 2,
+    position: "S",
+    ovr: 82,
+    tier: "R",
+    roleTitle: "Setter Penjaga Tembok",
+    stats: { attack: 75, defense: 84, serve: 79, brain: 87, speed: 81 },
+    tags: ["date-tech", "captain"],
   },
 
   // KAMOMEDAI
@@ -1103,6 +1268,36 @@ export const HAIKYUU_PLAYERS: readonly HaikyuuPlayer[] = [
     roleTitle: "Libero Penopang Tembok",
     stats: { attack: 58, defense: 90, serve: 58, brain: 85, speed: 88 },
     tags: ["kamomedai"],
+  },
+  {
+    id: "suwa",
+    name: "Aikichi Suwa",
+    schoolPackIds: ["kamomedai"],
+    schoolLabel: "Kamomedai",
+    primaryColor: "#f0f9ff",
+    secondaryColor: "#0284c7",
+    number: 1,
+    position: "S",
+    ovr: 88,
+    tier: "SR",
+    roleTitle: "Kapten Pengatur Tempo",
+    stats: { attack: 82, defense: 88, serve: 87, brain: 92, speed: 86 },
+    tags: ["kamomedai", "captain"],
+  },
+  {
+    id: "nozawa",
+    name: "Izuru Nozawa",
+    schoolPackIds: ["kamomedai"],
+    schoolLabel: "Kamomedai",
+    primaryColor: "#f0f9ff",
+    secondaryColor: "#0284c7",
+    number: 4,
+    position: "OH",
+    ovr: 86,
+    tier: "SR",
+    roleTitle: "Penjaga Receive & Blok",
+    stats: { attack: 84, defense: 90, serve: 83, brain: 86, speed: 84 },
+    tags: ["kamomedai", "receive"],
   },
 
   // ITACHIYAMA
@@ -1337,6 +1532,21 @@ export const HAIKYUU_PLAYERS: readonly HaikyuuPlayer[] = [
     stats: { attack: 55, defense: 84, serve: 55, brain: 80, speed: 82 },
     tags: ["nohebi"],
   },
+  {
+    id: "numai",
+    name: "Kazuma Numai",
+    schoolPackIds: ["nohebi"],
+    schoolLabel: "Nohebi",
+    primaryColor: "#14532d",
+    secondaryColor: "#18181b",
+    number: 4,
+    position: "OH",
+    ovr: 84,
+    tier: "R",
+    roleTitle: "Ace Ular Berbisa",
+    stats: { attack: 87, defense: 81, serve: 85, brain: 82, speed: 84 },
+    tags: ["nohebi", "ace"],
+  },
 
   // CHALLENGERS (WAKUTANI & TSUBAKIHARA)
   {
@@ -1398,6 +1608,21 @@ export const HAIKYUU_PLAYERS: readonly HaikyuuPlayer[] = [
     roleTitle: "Kapten Pengatur Tempo",
     stats: { attack: 76, defense: 82, serve: 81, brain: 87, speed: 81 },
     tags: ["captain"],
+  },
+  {
+    id: "hyakuzawa",
+    name: "Yudai Hyakuzawa",
+    schoolPackIds: ["challengers"],
+    schoolLabel: "Kakugawa",
+    primaryColor: "#451a03",
+    secondaryColor: "#fde68a",
+    number: 9,
+    position: "OH",
+    ovr: 84,
+    tier: "R",
+    roleTitle: "Raksasa Kakugawa 201cm",
+    stats: { attack: 89, defense: 81, serve: 79, brain: 78, speed: 81 },
+    tags: ["miyagi-camp"],
   },
 ] as const;
 
@@ -1520,6 +1745,11 @@ export const HAIKYUU_SYNERGY_CATALOG: readonly SynergyCatalogEntry[] = [
   { id: "serve-barrage", name: "Hujan Jump Serve", hint: "3+ spesialis jump serve dalam satu tim", category: "SPESIAL" },
   { id: "captains-aura", name: "Karisma Para Kapten", hint: "3+ kapten sekolah dalam satu tim", category: "SPESIAL" },
   { id: "top3-aces", name: "Meriam Top 3 Nasional", hint: "2+ Ace Top 3 Nasional (Ushijima, Sakusa, Kiryu)", category: "SPESIAL" },
+  { id: "kitagawa-turn", name: "Ikatan Kitagawa Daiichi", hint: "2+ dari Kindaichi, Kunimi, dan Kageyama (min. 1 dari Kindaichi/Kunimi)", category: "DUO" },
+  { id: "jump-float-duo", name: "Duo Jump-Float Karasuno", hint: "Pasangkan Yamaguchi & Kinoshita", category: "DUO" },
+  { id: "kamomedai-command", name: "Komando Elit Kamomedai", hint: "Aikichi Suwa + Hoshiumi atau Hirugami", category: "SEKOLAH" },
+  { id: "shiratori-clash", name: "Gaya Kontras Shiratorizawa", hint: "Pasangkan Eita Semi & Ushijima", category: "DUO" },
+  { id: "miyagi-rookies", name: "Kamp Pemula Miyagi", hint: "3+ pemain angkatan pertama Miyagi (Hinata, Tsukishima, Goshiki, Kindaichi, Kunimi, Koganegawa, Hyakuzawa)", category: "SPESIAL" },
 ] as const;
 
 export type LineupMap = Partial<Record<CourtSlotId, HaikyuuPlayer>>;
@@ -1540,7 +1770,6 @@ export interface TeamEvaluation {
   fitPenaltyTotal: number;
   synergyBonus: number;
   formationBonus: number;
-  trainingBonus: number;
   totalOvr: number;
   karasunoCount: number;
   activeSynergies: ActiveSynergy[];
@@ -1867,6 +2096,76 @@ export function computeActiveSynergies(
     });
   }
 
+  const kitagawaJuniors = players.filter((p) =>
+    ["kindaichi", "kunimi"].includes(p.id)
+  );
+  const kitagawaCore = players.filter((p) =>
+    ["kindaichi", "kunimi", "kageyama"].includes(p.id)
+  );
+  if (kitagawaJuniors.length >= 1 && kitagawaCore.length >= 2) {
+    activeSynergies.push({
+      id: "kitagawa-turn",
+      name: `Ikatan Kitagawa Daiichi (${kitagawaCore.length})`,
+      description: "Reuni mantan rekan SMP Kitagawa Daiichi yang memacu kombinasi serangan!",
+      ovrBonus: kitagawaCore.length >= 3 ? 1.8 : 1.4,
+      involvedPlayerIds: kitagawaCore.map((p) => p.id),
+    });
+  }
+
+  if (hasAll("yamaguchi", "kinoshita")) {
+    activeSynergies.push({
+      id: "jump-float-duo",
+      name: "Duo Jump-Float Karasuno",
+      description: "Yamaguchi & Kinoshita: Servis mengambang beruntun pengacau receive lawan!",
+      ovrBonus: 1.4,
+      involvedPlayerIds: ["yamaguchi", "kinoshita"],
+    });
+  }
+
+  const suwaPresent = draftedIds.has("suwa");
+  const kamomedaiStars = players.filter((p) =>
+    ["hoshiumi", "hirugami"].includes(p.id)
+  );
+  if (suwaPresent && kamomedaiStars.length >= 1) {
+    activeSynergies.push({
+      id: "kamomedai-command",
+      name: "Komando Elit Kamomedai",
+      description: "Suwa menjaga ketenangan ritme blok dan serangan Kamomedai!",
+      ovrBonus: 1.5,
+      involvedPlayerIds: ["suwa", ...kamomedaiStars.map((p) => p.id)],
+    });
+  }
+
+  if (hasAll("semi", "ushijima")) {
+    activeSynergies.push({
+      id: "shiratori-clash",
+      name: "Gaya Kontras Shiratorizawa",
+      description: "Semi & Ushijima: Servis agresif & umpan berani untuk sang Meriam!",
+      ovrBonus: 1.4,
+      involvedPlayerIds: ["semi", "ushijima"],
+    });
+  }
+
+  const miyagiRookieIds = [
+    "hinata",
+    "tsukishima",
+    "goshiki",
+    "kindaichi",
+    "kunimi",
+    "koganegawa",
+    "hyakuzawa",
+  ];
+  const miyagiRookies = players.filter((p) => miyagiRookieIds.includes(p.id));
+  if (miyagiRookies.length >= 3) {
+    activeSynergies.push({
+      id: "miyagi-rookies",
+      name: `Kamp Pemula Miyagi (${miyagiRookies.length})`,
+      description: "Bintang tahun pertama Prefektur Miyagi saling mendorong melampaui batas!",
+      ovrBonus: miyagiRookies.length >= 4 ? 2.0 : 1.6,
+      involvedPlayerIds: miyagiRookies.map((p) => p.id),
+    });
+  }
+
   return activeSynergies;
 }
 
@@ -1961,15 +2260,12 @@ export function getFormationStatus(
 
 export function evaluateTeam(
   lineup: LineupMap,
-  formationId: FormationId,
-  trainingBonus = 0
+  formationId: FormationId
 ): TeamEvaluation {
   const entries = Object.entries(lineup) as [CourtSlotId, HaikyuuPlayer | undefined][];
   const filled = entries.filter((entry): entry is [CourtSlotId, HaikyuuPlayer] =>
     Boolean(entry[1])
   );
-
-  const normalizedTraining = Number(Math.max(0, trainingBonus).toFixed(1));
 
   if (filled.length === 0) {
     return {
@@ -1977,7 +2273,6 @@ export function evaluateTeam(
       fitPenaltyTotal: 0,
       synergyBonus: 0,
       formationBonus: 0,
-      trainingBonus: normalizedTraining,
       totalOvr: 0,
       karasunoCount: 0,
       activeSynergies: [],
@@ -2041,7 +2336,7 @@ export function evaluateTeam(
       99.9,
       Math.max(
         50,
-        baseOvr - avgPenalty + synergyBonus + formationBonus + normalizedTraining
+        baseOvr - avgPenalty + synergyBonus + formationBonus
       )
     ).toFixed(1)
   );
@@ -2051,7 +2346,6 @@ export function evaluateTeam(
     fitPenaltyTotal: avgPenalty,
     synergyBonus,
     formationBonus,
-    trainingBonus: normalizedTraining,
     totalOvr,
     karasunoCount,
     activeSynergies,
@@ -2323,46 +2617,11 @@ export function computeMatchupEdge(
   };
 }
 
-export type CoachTimeoutId = "target-serve" | "read-block" | "pinch-server";
-
-export interface CoachTimeoutOption {
-  id: CoachTimeoutId;
-  name: string;
-  shortTag: string;
-  description: string;
-  baseBoost: number;
-}
-
-export const COACH_TIMEOUT_OPTIONS: readonly CoachTimeoutOption[] = [
-  {
-    id: "target-serve",
-    name: "Servis Target Receiver",
-    shortTag: "+SERVE",
-    description: "+1.5 OVR di set ini (jadi +2.0 jika Serve tim ≥ 88).",
-    baseBoost: 1.5,
-  },
-  {
-    id: "read-block",
-    name: "Instruksi Read Block",
-    shortTag: "+BLOCK",
-    description: "+1.4 OVR di set ini (jadi +2.0 jika Brain atau Defense ≥ 88).",
-    baseBoost: 1.4,
-  },
-  {
-    id: "pinch-server",
-    name: "Kirim Pinch Server",
-    shortTag: "CLUTCH",
-    description: "+1.3 OVR di set biasa, melonjak jadi +2.4 OVR di Set Penentuan/Tertinggal.",
-    baseBoost: 1.3,
-  },
-] as const;
-
 export interface SetScore {
   setNumber: number;
   karasuno: number;
   opponent: number;
   highlight: string;
-  coachCallUsed?: CoachTimeoutId;
 }
 
 export interface TournamentMatchResult {
@@ -2458,8 +2717,7 @@ function buildSetHighlight(
   setNumber: number,
   kScore: number,
   oScore: number,
-  rng: () => number,
-  coachCall?: CoachTimeoutId
+  rng: () => number
 ): string {
   const drafted = Object.values(lineup).filter((p): p is HaikyuuPlayer => Boolean(p));
   const setter = lineup.S;
@@ -2469,16 +2727,6 @@ function buildSetHighlight(
   );
   const star =
     spikers.sort((a, b) => b.ovr - a.ovr)[0] ?? drafted[0] ?? HAIKYUU_PLAYERS[0]!;
-
-  if (coachCall && karasunoWon) {
-    if (coachCall === "target-serve") {
-      return `Timeout Pelatih jitu! Servis terarah merusak formasi terima ${opponent.shortName} di Set ${setNumber}.`;
-    }
-    if (coachCall === "read-block") {
-      return `Instruksi Read Block sukses! Barisan depan Karasuno mengunci jalur spike ${opponent.starPlayer}.`;
-    }
-    return `Pinch Server menggila di momen krusial! Rentetan poin membawa Karasuno mengunci Set ${setNumber}.`;
-  }
 
   if (karasunoWon) {
     if (kScore >= 26 || (setNumber === 5 && kScore >= 16)) {
@@ -2499,31 +2747,6 @@ function buildSetHighlight(
     `Duel reli panjang berakhir untuk keunggulan tipis ${opponent.shortName} (${oScore}-${kScore}).`,
   ];
   return lossTemplates[Math.floor(rng() * lossTemplates.length)]!;
-}
-
-function getCoachTimeoutBoost(
-  coachCall: CoachTimeoutId | undefined,
-  teamEval: TeamEvaluation,
-  opponent: HarukoOpponent,
-  karasunoSets: number,
-  opponentSets: number,
-  setNumber: number
-): number {
-  if (!coachCall) return 0;
-  const setsToWin = opponent.bestOf === 5 ? 3 : 2;
-  const isDecidingOrBehind =
-    opponentSets > karasunoSets ||
-    (karasunoSets === setsToWin - 1 && opponentSets === setsToWin - 1) ||
-    setNumber === opponent.bestOf;
-
-  if (coachCall === "target-serve") {
-    return teamEval.stats.serve >= 88 ? 2.0 : 1.5;
-  }
-  if (coachCall === "read-block") {
-    return teamEval.stats.brain >= 88 || teamEval.stats.defense >= 88 ? 2.0 : 1.4;
-  }
-  // pinch-server
-  return isDecidingOrBehind ? 2.4 : 1.3;
 }
 
 function simulateSingleSet(
@@ -2582,7 +2805,6 @@ export function createLiveMatchState(
 
 export function playNextMatchSet(
   state: LiveMatchState,
-  coachCall?: CoachTimeoutId,
   rng: () => number = Math.random
 ): LiveMatchState {
   if (state.finished) return state;
@@ -2590,17 +2812,9 @@ export function playNextMatchSet(
   const setsToWin = state.opponent.bestOf === 5 ? 3 : 2;
   const setNumber = state.sets.length + 1;
   const targetPoints = state.opponent.bestOf === 5 && setNumber === 5 ? 15 : 25;
-  const coachBoost = getCoachTimeoutBoost(
-    coachCall,
-    state.teamEval,
-    state.opponent,
-    state.karasunoSets,
-    state.opponentSets,
-    setNumber
-  );
 
   const score = simulateSingleSet(
-    state.effectiveBaseOvr + coachBoost,
+    state.effectiveBaseOvr,
     state.opponent.ovr,
     targetPoints,
     rng
@@ -2621,10 +2835,8 @@ export function playNextMatchSet(
       setNumber,
       score.karasuno,
       score.opponent,
-      rng,
-      coachCall
+      rng
     ),
-    coachCallUsed: coachCall,
   };
 
   return {
@@ -2661,7 +2873,7 @@ export function simulateHarukoMatch(
 ): TournamentMatchResult {
   let state = createLiveMatchState(teamEval, lineup, opponent, rng);
   while (!state.finished) {
-    state = playNextMatchSet(state, undefined, rng);
+    state = playNextMatchSet(state, rng);
   }
   return finalizeLiveMatch(state);
 }

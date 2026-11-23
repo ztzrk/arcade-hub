@@ -11,17 +11,14 @@ import {
   Download,
   Eye,
   EyeOff,
-  Flame,
   MessageCircle,
   RefreshCw,
   RotateCcw,
   Shield,
   Sparkles,
   Trophy,
-  Zap,
 } from "lucide-react";
 import {
-  COACH_TIMEOUT_OPTIONS,
   COURT_SLOTS,
   HAIKYUU_PLAYERS,
   HAIKYUU_SYNERGY_CATALOG,
@@ -41,7 +38,6 @@ import {
   playNextMatchSet,
   rollSchoolPack,
   simulateHarukoMatch,
-  type CoachTimeoutId,
   type CourtSlotId,
   type FormationId,
   type HaikyuuDraftMode,
@@ -141,10 +137,6 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
   const [spinRunKey, setSpinRunKey] = useState(0);
   const [selectedPlayer, setSelectedPlayer] = useState<HaikyuuPlayer | null>(null);
   const [rerollsLeft, setRerollsLeft] = useState(1);
-  const [trainingBonus, setTrainingBonus] = useState(0);
-  const [extraDrawNext, setExtraDrawNext] = useState(false);
-  const [midDraftEventPending, setMidDraftEventPending] = useState(false);
-  const [midDraftChoiceLabel, setMidDraftChoiceLabel] = useState<string | null>(null);
   const [swapsLeft, setSwapsLeft] = useState(1);
   const [swapMode, setSwapMode] = useState(false);
   const [swapSourceSlot, setSwapSourceSlot] = useState<CourtSlotId | null>(null);
@@ -153,8 +145,6 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
   const [matchIndex, setMatchIndex] = useState(0);
   const [matchHistory, setMatchHistory] = useState<TournamentMatchResult[]>([]);
   const [liveMatch, setLiveMatch] = useState<LiveMatchState | null>(null);
-  const [coachTimeoutsLeft, setCoachTimeoutsLeft] = useState(2);
-  const [pendingCoachCall, setPendingCoachCall] = useState<CoachTimeoutId | null>(null);
   const [currentMatchResult, setCurrentMatchResult] =
     useState<TournamentMatchResult | null>(null);
   const [completedAt, setCompletedAt] = useState<Date>(() => new Date());
@@ -187,8 +177,8 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
   );
 
   const evaluation = useMemo(
-    () => evaluateTeam(lineup, formationId, trainingBonus),
-    [lineup, formationId, trainingBonus]
+    () => evaluateTeam(lineup, formationId),
+    [lineup, formationId]
   );
 
   const formationStatus = useMemo(
@@ -226,24 +216,18 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
     setReelItems([]);
     setSelectedPlayer(null);
     setRerollsLeft(mode === "classic" ? 1 : 0);
-    setTrainingBonus(0);
-    setExtraDrawNext(false);
-    setMidDraftEventPending(false);
-    setMidDraftChoiceLabel(null);
     setSwapsLeft(1);
     setSwapMode(false);
     setSwapSourceSlot(null);
     setMatchIndex(0);
     setMatchHistory([]);
     setLiveMatch(null);
-    setCoachTimeoutsLeft(mode === "classic" ? 2 : 1);
-    setPendingCoachCall(null);
     setCurrentMatchResult(null);
     setCopiedShare(false);
   };
 
   const triggerSpin = (consumeReroll = false) => {
-    if (spinning || midDraftEventPending) return;
+    if (spinning) return;
     if (consumeReroll && rerollsLeft <= 0) return;
 
     clearSpinTimers();
@@ -262,10 +246,6 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
     const usedSet = new Set(usedPackIds);
     const rng = draftRngRef.current;
     const chosen = rollSchoolPack(usedSet, draftedPlayerIds, rng);
-    const drawCount = extraDrawNext ? 4 : 3;
-    if (extraDrawNext) {
-      setExtraDrawNext(false);
-    }
 
     const reel: SchoolPack[] = [];
     for (let i = 0; i < REEL_TOTAL_CARDS; i++) {
@@ -298,28 +278,10 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
       setSpinning(false);
       setSpinLanded(false);
       setCurrentPack(chosen);
-      setPackCandidates(
-        drawPackCandidates(chosen.id, draftedPlayerIds, drawCount, rng)
-      );
+      setPackCandidates(drawPackCandidates(chosen.id, draftedPlayerIds, 3, rng));
       setUsedPackIds((prev) => [...prev, chosen.id]);
     }, 1580);
     reelTimersRef.current.push(finishTimer);
-  };
-
-  const handleMidDraftChoice = (choice: "training" | "scouting" | "swap") => {
-    soundManager.play("reveal");
-    if (choice === "training") {
-      setTrainingBonus((b) => Number((b + 1.0).toFixed(1)));
-      setMidDraftChoiceLabel("Latihan Intensif (+1.0 OVR)");
-    } else if (choice === "scouting") {
-      setRerollsLeft((r) => r + 1);
-      setExtraDrawNext(true);
-      setMidDraftChoiceLabel("Scouting Mendalam (+1 Timeout & 4 Kandidat)");
-    } else {
-      setSwapsLeft((s) => s + 1);
-      setMidDraftChoiceLabel("Rotasi Taktis (+1 Tukar Posisi)");
-    }
-    setMidDraftEventPending(false);
   };
 
   const handleSwapSlotClick = (slotId: CourtSlotId) => {
@@ -373,11 +335,7 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
       setLiveMatch(null);
       setCurrentMatchResult(null);
     } else {
-      const nextRound = round + 1;
-      setRound(nextRound);
-      if (nextRound === 4) {
-        setMidDraftEventPending(true);
-      }
+      setRound((r) => r + 1);
     }
   };
 
@@ -447,13 +405,8 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
     const isOpeningSet = !liveMatch;
     const baseState =
       liveMatch ?? createLiveMatchState(evaluation, lineup, opponent, rng);
-    const callToUse = pendingCoachCall ?? undefined;
-    if (callToUse && coachTimeoutsLeft > 0) {
-      setCoachTimeoutsLeft((c) => Math.max(0, c - 1));
-    }
-    setPendingCoachCall(null);
 
-    const nextState = playNextMatchSet(baseState, callToUse, rng);
+    const nextState = playNextMatchSet(baseState, rng);
     setLiveMatch(nextState);
 
     if (nextState.finished) {
@@ -477,7 +430,6 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
     }
     setMatchIndex((i) => i + 1);
     setLiveMatch(null);
-    setPendingCoachCall(null);
     setCurrentMatchResult(null);
   };
 
@@ -490,7 +442,7 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
     if (!currentMatchResult && liveMatch && !liveMatch.finished) {
       let finishing = liveMatch;
       while (!finishing.finished) {
-        finishing = playNextMatchSet(finishing, undefined, rng);
+        finishing = playNextMatchSet(finishing, rng);
       }
       const res = finalizeLiveMatch(finishing);
       history.push(res);
@@ -519,7 +471,6 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
       soundManager.play("wrong");
     }
     setLiveMatch(null);
-    setPendingCoachCall(null);
     setMatchHistory(history);
     recordRunOutcome(history);
     setPhase("SUMMARY");
@@ -898,90 +849,11 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
         <div className="grid gap-5 lg:grid-cols-[1.12fr_0.88fr]">
           {/* LEFT: Spin & School Roster */}
           <div className="space-y-4">
-            {midDraftEventPending ? (
-              <m.div
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rounded-lg border border-[#d4a24c]/50 bg-[#171510] p-5"
-              >
-                <div className="flex items-center gap-2 text-xs font-bold tracking-wider text-[#d4a24c]">
-                  <Flame className="h-4 w-4 text-[#f97316]" />
-                  KAMP LATIHAN TENGAH DRAFT (PUTARAN 4)
-                </div>
-                <h2 className="font-display mt-1.5 text-2xl text-[#ebe5d8]">
-                  Pilih Fokus Pelatih Ukai
-                </h2>
-                <p className="mt-1 text-xs text-[#9c9689]">
-                  Sebelum paruh kedua draft dimulai, tentukan bonus taktis untuk
-                  memperkuat skuad Karasuno.
-                </p>
-
-                <div className="mt-4 space-y-2.5">
-                  <button
-                    type="button"
-                    onClick={() => handleMidDraftChoice("training")}
-                    className="flex w-full items-start justify-between gap-3 rounded-md border border-white/12 bg-[#141513] p-3 text-left hover:border-[#f97316] transition-colors cursor-pointer"
-                  >
-                    <div>
-                      <p className="text-sm font-semibold text-[#ebe5d8]">
-                        Latihan Fisik Intensif
-                      </p>
-                      <p className="mt-0.5 text-xs text-[#9c9689]">
-                        Tambahan permanen +1.0 Team OVR sepanjang turnamen.
-                      </p>
-                    </div>
-                    <span className="font-mono-tabular shrink-0 rounded bg-[#f97316]/15 px-2 py-0.5 text-xs font-bold text-[#fb923c]">
-                      +1.0 OVR
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleMidDraftChoice("scouting")}
-                    className="flex w-full items-start justify-between gap-3 rounded-md border border-white/12 bg-[#141513] p-3 text-left hover:border-[#f97316] transition-colors cursor-pointer"
-                  >
-                    <div>
-                      <p className="text-sm font-semibold text-[#ebe5d8]">
-                        Scouting Ekstra Takeda
-                      </p>
-                      <p className="mt-0.5 text-xs text-[#9c9689]">
-                        Dapat +1 Timeout Ukai &amp; spin berikutnya membuka 4 kandidat sekaligus.
-                      </p>
-                    </div>
-                    <span className="font-mono-tabular shrink-0 rounded bg-emerald-500/15 px-2 py-0.5 text-xs font-bold text-emerald-300">
-                      +1 SPIN / 4 KARTU
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleMidDraftChoice("swap")}
-                    className="flex w-full items-start justify-between gap-3 rounded-md border border-white/12 bg-[#141513] p-3 text-left hover:border-[#f97316] transition-colors cursor-pointer"
-                  >
-                    <div>
-                      <p className="text-sm font-semibold text-[#ebe5d8]">
-                        Penyesuaian Rotasi Lapangan
-                      </p>
-                      <p className="mt-0.5 text-xs text-[#9c9689]">
-                        Tambah +1 hak Tukar Posisi untuk mengoptimalkan penalti &amp; posisi.
-                      </p>
-                    </div>
-                    <span className="font-mono-tabular shrink-0 rounded bg-[#d4a24c]/15 px-2 py-0.5 text-xs font-bold text-[#d4a24c]">
-                      +1 TUKAR
-                    </span>
-                  </button>
-                </div>
-              </m.div>
-            ) : !currentPack ? (
+            {!currentPack ? (
               <div className="rounded-lg border border-white/12 bg-[#151614] p-5 text-center">
                 <h2 className="font-display text-2xl text-[#ebe5d8]">
                   {spinning ? "Mengundi Sekolah..." : `Spin Sekolah #${round}`}
                 </h2>
-                {extraDrawNext && !spinning && (
-                  <p className="mt-1 text-xs font-medium text-emerald-400">
-                    Scouting Aktif: spin ini akan menampilkan 4 kandidat pemain!
-                  </p>
-                )}
 
                 {/* Mechanical Reel */}
                 <div className="relative my-5 h-[88px] overflow-hidden border-y border-white/15 bg-[#10110f]">
@@ -1146,9 +1018,6 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
                                   </span>
                                 )}
                               </div>
-                              <p className="truncate text-[10px] italic text-[#8a8478]">
-                                {player.roleTitle}
-                              </p>
                               <div className="font-mono-tabular flex flex-wrap gap-x-2 gap-y-0.5 text-[10px] text-[#9c9689]">
                                 <span>ATK {player.stats.attack}</span>
                                 <span>DEF {player.stats.defense}</span>
@@ -1284,14 +1153,6 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
                         +{evaluation.formationBonus.toFixed(1)}
                       </strong>
                     </span>
-                    {evaluation.trainingBonus > 0 && (
-                      <span>
-                        Latihan{" "}
-                        <strong className="font-mono-tabular text-emerald-400">
-                          +{evaluation.trainingBonus.toFixed(1)}
-                        </strong>
-                      </span>
-                    )}
                   </div>
 
                   {/* Team Average Stat Strip */}
@@ -1311,9 +1172,6 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
                     <span className="rounded bg-white/5 px-1.5 py-0.5">
                       SPD <strong className="text-[#ebe5d8]">{evaluation.stats.speed}</strong>
                     </span>
-                    {midDraftChoiceLabel && (
-                      <span className="text-emerald-400">• {midDraftChoiceLabel}</span>
-                    )}
                   </div>
                 </div>
               )}
@@ -1611,67 +1469,9 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
                         >
                           {s.karasuno} - {s.opponent}
                         </span>
-                        {s.coachCallUsed && (
-                          <span className="rounded bg-[#d4a24c]/15 px-1.5 py-0.5 text-[10px] font-semibold text-[#d4a24c]">
-                            TIMEOUT
-                          </span>
-                        )}
                       </div>
                       <p className="text-xs text-[#cfc8ba]">{s.highlight}</p>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Coach Timeout Selector before upcoming set */}
-          {!currentMatchResult && coachTimeoutsLeft > 0 && (
-            <div className="mt-4 rounded-md border border-white/10 bg-[#111210] p-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#d4a24c]">
-                  <Zap className="h-3.5 w-3.5 text-[#f97316]" />
-                  Instruksi Timeout Pelatih (Sisa {coachTimeoutsLeft}x Turnamen)
-                </span>
-                {pendingCoachCall && (
-                  <button
-                    type="button"
-                    onClick={() => setPendingCoachCall(null)}
-                    className="text-[11px] text-[#9c9689] hover:text-[#ebe5d8] cursor-pointer"
-                  >
-                    Batalkan pilihan
-                  </button>
-                )}
-              </div>
-              <div className="mt-2.5 grid gap-2 sm:grid-cols-3">
-                {COACH_TIMEOUT_OPTIONS.map((opt) => {
-                  const active = pendingCoachCall === opt.id;
-                  return (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => {
-                        soundManager.play("click");
-                        setPendingCoachCall(active ? null : opt.id);
-                      }}
-                      className={`rounded-md border p-2 text-left transition-colors cursor-pointer ${
-                        active
-                          ? "border-[#f97316] bg-[#241911]"
-                          : "border-white/10 bg-[#151614] hover:border-white/25"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="text-[11px] font-semibold text-[#ebe5d8]">
-                          {opt.name}
-                        </span>
-                        <span className="font-mono-tabular text-[10px] font-bold text-[#fb923c]">
-                          {opt.shortTag}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-[10px] leading-snug text-[#9c9689]">
-                        {opt.description}
-                      </p>
-                    </button>
                   );
                 })}
               </div>
@@ -1695,8 +1495,8 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
                   className="min-h-[44px] flex-1 rounded-md bg-[#f97316] px-6 py-2.5 text-sm font-bold text-[#111210] hover:bg-[#fb923c] transition-colors cursor-pointer sm:flex-initial"
                 >
                   {liveMatch
-                    ? `Mainkan Set ${liveMatch.sets.length + 1}${pendingCoachCall ? " (+Timeout)" : ""}`
-                    : `Mulai Pertandingan (Set 1)${pendingCoachCall ? " (+Timeout)" : ""}`}
+                    ? `Mainkan Set ${liveMatch.sets.length + 1}`
+                    : "Mulai Pertandingan (Set 1)"}
                 </button>
               </>
             ) : (
