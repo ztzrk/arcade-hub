@@ -17,10 +17,7 @@ interface VolleyballCourtProps {
   selectedPlayer: HaikyuuPlayer | null;
   blindMode?: boolean;
   interactive?: boolean;
-  swapMode?: boolean;
-  swapSourceSlot?: CourtSlotId | null;
   onPlaceInSlot?: (slotId: CourtSlotId) => void;
-  onSwapSlotClick?: (slotId: CourtSlotId) => void;
 }
 
 const FRONT_ROW: CourtSlotId[] = ["OH1", "MB1", "OP"];
@@ -46,10 +43,7 @@ export function VolleyballCourt({
   selectedPlayer,
   blindMode = false,
   interactive = true,
-  swapMode = false,
-  swapSourceSlot = null,
   onPlaceInSlot,
-  onSwapSlotClick,
 }: VolleyballCourtProps) {
   const synergyPlayerIds = new Set(
     evaluation.activeSynergies.flatMap((s) => s.involvedPlayerIds)
@@ -82,10 +76,7 @@ export function VolleyballCourt({
     const meta = getSlotMeta(slotId);
     const player = lineup[slotId];
     const slotScore = evaluation.slotScores[slotId];
-    const canPlace = interactive && !swapMode && Boolean(selectedPlayer) && !player;
-    const canSwap = interactive && swapMode && Boolean(player);
-    const isSwapSource = swapMode && swapSourceSlot === slotId;
-    const isActionable = canPlace || canSwap;
+    const canPlace = interactive && Boolean(selectedPlayer) && !player;
     const previewFit =
       canPlace && selectedPlayer ? getPositionFit(selectedPlayer, slotId) : null;
     const hasSynergy = player ? synergyPlayerIds.has(player.id) : false;
@@ -101,26 +92,16 @@ export function VolleyballCourt({
       <button
         key={slotId}
         type="button"
-        disabled={!isActionable}
-        onClick={() => {
-          if (canSwap) {
-            onSwapSlotClick?.(slotId);
-          } else if (canPlace) {
-            onPlaceInSlot?.(slotId);
-          }
-        }}
+        disabled={!canPlace}
+        onClick={() => canPlace && onPlaceInSlot?.(slotId)}
         className={`relative flex w-full min-h-[104px] flex-col items-center justify-between rounded-md border p-2 text-center transition-all sm:min-h-[114px] ${
-          isSwapSource
-            ? "cursor-pointer border-[#d4a24c] bg-[#2a2010] ring-2 ring-[#d4a24c]"
-            : canSwap
-              ? "cursor-pointer border-[#d4a24c]/60 bg-[#1a1813] hover:border-[#d4a24c] hover:bg-[#252116]"
-              : player
-                ? hasSynergy
-                  ? "border-[#f97316] bg-[#161513]/95 shadow-[inset_0_0_0_1px_rgba(249,115,22,0.35)]"
-                  : "border-white/20 bg-[#141513]/92"
-                : canPlace
-                  ? "cursor-pointer border-white/80 bg-[#f97316]/20 hover:bg-[#f97316]/32"
-                  : "border-dashed border-white/25 bg-black/25"
+          player
+            ? hasSynergy
+              ? "border-[#f97316] bg-[#161513]/95 shadow-[inset_0_0_0_1px_rgba(249,115,22,0.35)]"
+              : "border-white/20 bg-[#141513]/92"
+            : canPlace
+              ? "cursor-pointer border-white/80 bg-[#f97316]/20 hover:bg-[#f97316]/32"
+              : "border-dashed border-white/25 bg-black/25"
         }`}
       >
         <div className="flex w-full items-center justify-between gap-1 text-[10px]">

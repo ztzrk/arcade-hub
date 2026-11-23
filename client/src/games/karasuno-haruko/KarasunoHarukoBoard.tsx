@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { m } from "framer-motion";
 import {
-  ArrowLeftRight,
   Award,
   BadgeCheck,
   BookOpen,
@@ -136,10 +135,7 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
   const [reelItems, setReelItems] = useState<SchoolPack[]>([]);
   const [spinRunKey, setSpinRunKey] = useState(0);
   const [selectedPlayer, setSelectedPlayer] = useState<HaikyuuPlayer | null>(null);
-  const [rerollsLeft, setRerollsLeft] = useState(1);
-  const [swapsLeft, setSwapsLeft] = useState(1);
-  const [swapMode, setSwapMode] = useState(false);
-  const [swapSourceSlot, setSwapSourceSlot] = useState<CourtSlotId | null>(null);
+  const [rerollsLeft, setRerollsLeft] = useState(3);
 
   // Tournament state
   const [matchIndex, setMatchIndex] = useState(0);
@@ -215,10 +211,7 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
     setSpinLanded(false);
     setReelItems([]);
     setSelectedPlayer(null);
-    setRerollsLeft(mode === "classic" ? 1 : 0);
-    setSwapsLeft(1);
-    setSwapMode(false);
-    setSwapSourceSlot(null);
+    setRerollsLeft(3);
     setMatchIndex(0);
     setMatchHistory([]);
     setLiveMatch(null);
@@ -232,8 +225,6 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
 
     clearSpinTimers();
     setSelectedPlayer(null);
-    setSwapMode(false);
-    setSwapSourceSlot(null);
     if (consumeReroll) {
       setCurrentPack(null);
       setPackCandidates([]);
@@ -284,33 +275,6 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
     reelTimersRef.current.push(finishTimer);
   };
 
-  const handleSwapSlotClick = (slotId: CourtSlotId) => {
-    if (!swapMode || swapsLeft <= 0 || !lineup[slotId]) return;
-    if (!swapSourceSlot) {
-      soundManager.play("click");
-      setSwapSourceSlot(slotId);
-      return;
-    }
-    if (swapSourceSlot === slotId) {
-      soundManager.play("click");
-      setSwapSourceSlot(null);
-      return;
-    }
-    const sourcePlayer = lineup[swapSourceSlot];
-    const targetPlayer = lineup[slotId];
-    if (!sourcePlayer || !targetPlayer) return;
-
-    soundManager.play("card");
-    setLineup((prev) => ({
-      ...prev,
-      [swapSourceSlot]: targetPlayer,
-      [slotId]: sourcePlayer,
-    }));
-    setSwapsLeft((s) => Math.max(0, s - 1));
-    setSwapSourceSlot(null);
-    setSwapMode(false);
-  };
-
   const handlePlaceInSlot = (slotId: CourtSlotId) => {
     if (!selectedPlayer || lineup[slotId]) return;
     soundManager.play("card");
@@ -327,8 +291,6 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
 
     if (round >= TOTAL_DRAFT_ROUNDS) {
       soundManager.play("whistle");
-      setSwapMode(false);
-      setSwapSourceSlot(null);
       setPhase("TOURNAMENT");
       setMatchIndex(0);
       setMatchHistory([]);
@@ -397,9 +359,6 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
   const playCurrentMatchSet = () => {
     const opponent = HARUKO_BRACKET[matchIndex];
     if (!opponent || currentMatchResult) return;
-
-    setSwapMode(false);
-    setSwapSourceSlot(null);
 
     const rng = matchRngRef.current;
     const isOpeningSet = !liveMatch;
@@ -705,7 +664,7 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
                     <div>
                       <p className="text-sm font-semibold text-[#ebe5d8]">Mode Klasik</p>
                       <p className="mt-0.5 text-xs text-[#9c9689]">
-                        Posisi, OVR, dan resonansi terlihat + 1x Timeout Ukai.
+                        Posisi, OVR, dan resonansi terlihat + 3x Timeout Ukai.
                       </p>
                     </div>
                   </button>
@@ -725,7 +684,7 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
                         Mode Blind (Expert)
                       </p>
                       <p className="mt-0.5 text-xs text-[#9c9689]">
-                        OVR & posisi asli disembunyikan sampai pemain ditempatkan.
+                        OVR &amp; posisi asli disembunyikan sampai pemain ditempatkan + 3x Timeout Ukai.
                       </p>
                     </div>
                   </button>
@@ -796,36 +755,14 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <button
               type="button"
-              disabled={draftedPlayerIds.size < 2 || swapsLeft <= 0 || spinning}
-              onClick={() => {
-                soundManager.play("click");
-                setSelectedPlayer(null);
-                setSwapSourceSlot(null);
-                setSwapMode((prev) => !prev);
-              }}
-              className={`flex min-h-[34px] items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-35 ${
-                swapMode
-                  ? "border-[#d4a24c] bg-[#d4a24c]/25 text-[#f7d894]"
-                  : "border-white/15 bg-[#161714] text-[#cfc8ba] hover:border-white/30"
-              }`}
-              title="Tukar posisi 2 pemain yang sudah dipasang"
+              disabled={!currentPack || spinning || rerollsLeft <= 0}
+              onClick={() => triggerSpin(true)}
+              className="flex min-h-[34px] items-center gap-1.5 rounded-md border border-[#d4a24c]/40 bg-[#d4a24c]/10 px-2.5 py-1 text-xs font-medium text-[#d4a24c] hover:bg-[#d4a24c]/20 disabled:cursor-not-allowed disabled:opacity-35 transition-colors cursor-pointer"
+              title="Ulangi spin sekolah (3x per run)"
             >
-              <ArrowLeftRight className="h-3.5 w-3.5" />
-              {swapMode ? "Batal Tukar" : `Tukar (${swapsLeft})`}
+              <RefreshCw className="h-3.5 w-3.5" />
+              Timeout Ukai ({rerollsLeft})
             </button>
-
-            {mode === "classic" && (
-              <button
-                type="button"
-                disabled={!currentPack || spinning || rerollsLeft <= 0}
-                onClick={() => triggerSpin(true)}
-                className="flex min-h-[34px] items-center gap-1.5 rounded-md border border-[#d4a24c]/40 bg-[#d4a24c]/10 px-2.5 py-1 text-xs font-medium text-[#d4a24c] hover:bg-[#d4a24c]/20 disabled:cursor-not-allowed disabled:opacity-35 transition-colors cursor-pointer"
-                title="Ulangi spin sekolah"
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-                Timeout Ukai ({rerollsLeft})
-              </button>
-            )}
             <div className="flex items-baseline gap-1.5 border-l border-white/12 pl-3">
               <span className="text-xs text-[#9c9689]">OVR</span>
               <span className="font-mono-tabular text-lg font-bold text-[#f97316]">
@@ -834,16 +771,6 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
             </div>
           </div>
         </div>
-
-        {swapMode && (
-          <div className="mb-4 flex items-center justify-between gap-2 rounded-md border border-[#d4a24c]/45 bg-[#241d11] px-3.5 py-2 text-xs text-[#f7d894]">
-            <span>
-              {swapSourceSlot
-                ? `Slot ${swapSourceSlot} dipilih — klik pemain kedua di lapangan untuk menukar posisi.`
-                : "Mode Tukar Aktif: klik pemain pertama di lapangan yang ingin dipindah."}
-            </span>
-          </div>
-        )}
 
         {/* 2-Column Draft Workspace */}
         <div className="grid gap-5 lg:grid-cols-[1.12fr_0.88fr]">
@@ -956,8 +883,6 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
                         type="button"
                         onClick={() => {
                           soundManager.play("click");
-                          setSwapMode(false);
-                          setSwapSourceSlot(null);
                           setSelectedPlayer(isSelected ? null : player);
                         }}
                         style={{
@@ -1185,10 +1110,7 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
               evaluation={evaluation}
               selectedPlayer={selectedPlayer}
               blindMode={mode === "blind"}
-              swapMode={swapMode}
-              swapSourceSlot={swapSourceSlot}
               onPlaceInSlot={handlePlaceInSlot}
-              onSwapSlotClick={handleSwapSlotClick}
             />
           </div>
         </div>
@@ -1217,8 +1139,6 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
       : liveMatch
         ? liveMatch.sets
         : [];
-    const canPreMatchSwap =
-      matchIndex === 0 && !liveMatch && !currentMatchResult && swapsLeft > 0;
 
     return (
       <div className="mx-auto max-w-4xl px-3.5 py-5 sm:px-5 sm:py-7">
@@ -1250,46 +1170,6 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
             );
           })}
         </div>
-
-        {/* Optional Pre-Match Final Swap before Match 1 */}
-        {canPreMatchSwap && (
-          <div className="mb-4 rounded-lg border border-[#d4a24c]/35 bg-[#171510] p-3.5">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="text-xs text-[#cfc8ba]">
-                <strong className="text-[#d4a24c]">Persiapan Sebelum Match 1:</strong>{" "}
-                Masih punya {swapsLeft}x hak Tukar Posisi jika ingin merapikan slot.
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  soundManager.play("click");
-                  setSwapSourceSlot(null);
-                  setSwapMode((prev) => !prev);
-                }}
-                className={`flex min-h-[34px] items-center gap-1.5 rounded-md border px-3 py-1 text-xs font-semibold transition-colors cursor-pointer ${
-                  swapMode
-                    ? "border-[#d4a24c] bg-[#d4a24c]/25 text-[#f7d894]"
-                    : "border-[#d4a24c]/45 bg-[#d4a24c]/10 text-[#d4a24c] hover:bg-[#d4a24c]/20"
-                }`}
-              >
-                <ArrowLeftRight className="h-3.5 w-3.5" />
-                {swapMode ? "Tutup Mode Tukar" : "Atur Lineup"}
-              </button>
-            </div>
-            {swapMode && (
-              <div className="mt-3">
-                <VolleyballCourt
-                  lineup={lineup}
-                  evaluation={evaluation}
-                  selectedPlayer={null}
-                  swapMode={true}
-                  swapSourceSlot={swapSourceSlot}
-                  onSwapSlotClick={handleSwapSlotClick}
-                />
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Flip Scoreboard */}
         <div className="rounded-lg border border-white/15 bg-[#151614] p-5 sm:p-6">
