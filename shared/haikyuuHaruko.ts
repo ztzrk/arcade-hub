@@ -1741,7 +1741,7 @@ export const HAIKYUU_SYNERGY_CATALOG: readonly SynergyCatalogEntry[] = [
   { id: "karasuno-spirit", name: "Jiwa Gagak Karasuno", hint: "2+ pemain Karasuno dalam satu tim", category: "SEKOLAH" },
   { id: "all-japan-youth", name: "Kamp Timnas U-19", hint: "2+ anggota Kamp Timnas (Kageyama, Atsumu, Sakusa, Komori, Hoshiumi, Chigaya)", category: "SPESIAL" },
   { id: "little-giants", name: "Duel Raksasa Kecil", hint: "2+ pemain bertag Raksasa Kecil (Hinata, Hoshiumi, Nakashima)", category: "SPESIAL" },
-  { id: "national-block-wall", name: "Benteng Blok Nasional", hint: "2+ blocker elit (Tsukishima, Kuroo, Aone, Hirugami, Tendou)", category: "SPESIAL" },
+  { id: "national-block-wall", name: "Benteng Blok Nasional", hint: "2+ blocker elit (Tsukishima, Kuroo, Aone, Hirugami, Tendou, Washio, Omimi, Unnan, Mami)", category: "SPESIAL" },
   { id: "serve-barrage", name: "Hujan Jump Serve", hint: "3+ spesialis jump serve dalam satu tim", category: "SPESIAL" },
   { id: "captains-aura", name: "Karisma Para Kapten", hint: "3+ kapten sekolah dalam satu tim", category: "SPESIAL" },
   { id: "top3-aces", name: "Meriam Top 3 Nasional", hint: "2+ Ace Top 3 Nasional (Ushijima, Sakusa, Kiryu)", category: "SPESIAL" },
@@ -1750,6 +1750,11 @@ export const HAIKYUU_SYNERGY_CATALOG: readonly SynergyCatalogEntry[] = [
   { id: "kamomedai-command", name: "Komando Elit Kamomedai", hint: "Aikichi Suwa + Hoshiumi atau Hirugami", category: "SEKOLAH" },
   { id: "shiratori-clash", name: "Gaya Kontras Shiratorizawa", hint: "Pasangkan Eita Semi & Ushijima", category: "DUO" },
   { id: "miyagi-rookies", name: "Kamp Pemula Miyagi", hint: "3+ pemain angkatan pertama Miyagi (Hinata, Tsukishima, Goshiki, Kindaichi, Kunimi, Koganegawa, Hyakuzawa)", category: "SPESIAL" },
+  { id: "iron-receive-line", name: "Garis Receive Baja", hint: "3+ spesialis receive/defense (Libero + Wing bertahan seperti Reon, Fukunaga, Konoha, Nozawa, Daichi, Kita)", category: "SPESIAL" },
+  { id: "tokyo-alliance", name: "Kekuatan Tokyo", hint: "3+ pemain asal Tokyo (Nekoma, Fukurodani, Itachiyama, Nohebi) dari min. 2 sekolah berbeda", category: "SEKOLAH" },
+  { id: "skyline-towers", name: "Menara Langit 190cm+", hint: "2+ pemain bertinggi 190cm ke atas (Hakuba, Hyakuzawa, Aone, Hirugami, Omimi, Teradomari, Lev, Koganegawa)", category: "SPESIAL" },
+  { id: "wild-cannons", name: "Meriam Liar & Agresif", hint: "2+ spiker agresif (Kyotani, Yamamoto, Tanaka, Teradomari, Terushima)", category: "SPESIAL" },
+  { id: "tactical-minds", name: "Otak Strategi Lapangan", hint: "2+ ahli taktik (Usuri, Kenma, Akaashi, Oikawa, Suwa, Sugawara, Konoha, Daisho, Kunimi, Tsukishima, Kita)", category: "SPESIAL" },
 ] as const;
 
 export type LineupMap = Partial<Record<CourtSlotId, HaikyuuPlayer>>;
@@ -2035,7 +2040,17 @@ export function computeActiveSynergies(
   }
 
   const eliteBlockers = players.filter((p) =>
-    ["tsukishima", "kuroo", "aone", "hirugami", "tendou"].includes(p.id)
+    [
+      "tsukishima",
+      "kuroo",
+      "aone",
+      "hirugami",
+      "tendou",
+      "washio",
+      "omimi",
+      "unnan",
+      "mami",
+    ].includes(p.id)
   );
   if (eliteBlockers.length >= 2) {
     activeSynergies.push({
@@ -2163,6 +2178,118 @@ export function computeActiveSynergies(
       description: "Bintang tahun pertama Prefektur Miyagi saling mendorong melampaui batas!",
       ovrBonus: miyagiRookies.length >= 4 ? 2.0 : 1.6,
       involvedPlayerIds: miyagiRookies.map((p) => p.id),
+    });
+  }
+
+  const receiveSpecialistIds = [
+    "daichi",
+    "ennoshita",
+    "kai",
+    "kita",
+    "nozawa",
+    "reon",
+    "fukunaga",
+    "iwaizumi",
+    "konoha",
+    "nishinoya",
+    "yaku",
+    "komori",
+    "akagi",
+    "yamagata",
+    "komi",
+    "kanbayashi",
+    "watari",
+    "sakunami",
+  ];
+  const receiveLine = players.filter((p) => receiveSpecialistIds.includes(p.id));
+  if (receiveLine.length >= 3) {
+    activeSynergies.push({
+      id: "iron-receive-line",
+      name: `Garis Receive Baja (${receiveLine.length})`,
+      description: "Pertahanan lantai rapat membuat spike lawan sulit langsung mematikan!",
+      ovrBonus: receiveLine.length >= 4 ? 1.8 : 1.3,
+      involvedPlayerIds: receiveLine.map((p) => p.id),
+    });
+  }
+
+  const tokyoTags = ["nekoma", "fukurodani", "itachiyama", "nohebi"] as const;
+  const tokyoPlayers = players.filter((p) =>
+    tokyoTags.some((tag) => p.tags.includes(tag))
+  );
+  const tokyoSchools = new Set(
+    tokyoPlayers.map((p) => tokyoTags.find((tag) => p.tags.includes(tag))!)
+  );
+  if (tokyoPlayers.length >= 3 && tokyoSchools.size >= 2) {
+    activeSynergies.push({
+      id: "tokyo-alliance",
+      name: `Kekuatan Tokyo (${tokyoPlayers.length})`,
+      description: "Rival dan wakil tangguh Tokyo bersatu membawa ritme cepat ibu kota!",
+      ovrBonus: tokyoPlayers.length >= 4 ? 1.9 : 1.4,
+      involvedPlayerIds: tokyoPlayers.map((p) => p.id),
+    });
+  }
+
+  const towerIds = [
+    "hakuba",
+    "hyakuzawa",
+    "aone",
+    "hirugami",
+    "omimi",
+    "teradomari",
+    "lev",
+    "koganegawa",
+    "tsukishima",
+  ];
+  const towers = players.filter((p) => towerIds.includes(p.id));
+  if (towers.length >= 2) {
+    activeSynergies.push({
+      id: "skyline-towers",
+      name: `Menara Langit 190cm+ (${towers.length})`,
+      description: "Keunggulan jangkauan tinggi di atas net mendominasi duel udara!",
+      ovrBonus: towers.length >= 3 ? 1.8 : 1.4,
+      involvedPlayerIds: towers.map((p) => p.id),
+    });
+  }
+
+  const wildCannonIds = [
+    "kyotani",
+    "yamamoto",
+    "tanaka",
+    "teradomari",
+    "terushima",
+  ];
+  const wildCannons = players.filter((p) => wildCannonIds.includes(p.id));
+  if (wildCannons.length >= 2) {
+    activeSynergies.push({
+      id: "wild-cannons",
+      name: `Meriam Liar & Agresif (${wildCannons.length})`,
+      description: "Spiker tanpa rasa takut yang mematahkan mental blok lawan!",
+      ovrBonus: wildCannons.length >= 3 ? 1.8 : 1.4,
+      involvedPlayerIds: wildCannons.map((p) => p.id),
+    });
+  }
+
+  const tacticalMindIds = [
+    "usuri",
+    "kenma",
+    "akaashi",
+    "oikawa",
+    "suwa",
+    "sugawara",
+    "konoha",
+    "daisho",
+    "kunimi",
+    "tsukishima",
+    "kita",
+  ];
+  const tacticalMinds = players.filter((p) => tacticalMindIds.includes(p.id));
+  if (tacticalMinds.length >= 2) {
+    activeSynergies.push({
+      id: "tactical-minds",
+      name: `Otak Strategi Lapangan (${tacticalMinds.length})`,
+      description: "Pembaca permainan cerdas yang membongkar celah pertahanan lawan!",
+      ovrBonus: tacticalMinds.length >= 3 ? 1.8 : 1.4,
+      involvedPlayerIds: tacticalMinds.map((p) => p.id),
     });
   }
 

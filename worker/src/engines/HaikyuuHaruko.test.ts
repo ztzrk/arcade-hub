@@ -6,6 +6,7 @@ import {
   HAIKYUU_SYNERGY_CATALOG,
   HARUKO_BRACKET,
   SCHOOL_PACKS,
+  computeActiveSynergies,
   computeMatchupEdge,
   createLiveMatchState,
   createSeededRng as sharedSeededRng,
@@ -290,5 +291,22 @@ describe("Haikyuu Haruko Draft Engine", () => {
     for (const id of synIds2) {
       expect(catalogIds.has(id)).toBe(true);
     }
+  });
+
+  it("ensures every 85+ OVR player has at least one synergy and catalog stays in sync", () => {
+    const allSynergies = computeActiveSynergies(HAIKYUU_PLAYERS);
+    const catalogIds = new Set(HAIKYUU_SYNERGY_CATALOG.map((c) => c.id));
+    const activeIds = new Set(allSynergies.map((s) => s.id));
+
+    expect(activeIds.size).toBe(catalogIds.size);
+    for (const id of activeIds) {
+      expect(catalogIds.has(id)).toBe(true);
+    }
+
+    const coveredPlayers = new Set(allSynergies.flatMap((s) => s.involvedPlayerIds));
+    const uncovered85Plus = HAIKYUU_PLAYERS.filter(
+      (p) => p.ovr >= 85 && !coveredPlayers.has(p.id)
+    );
+    expect(uncovered85Plus).toEqual([]);
   });
 });
