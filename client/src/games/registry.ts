@@ -24,6 +24,12 @@ const TebakKarakterBoard = lazy(() =>
   }))
 );
 
+const Susun4Board = lazy(() =>
+  import("./susun-4/Susun4Board").then((m) => ({
+    default: m.Susun4Board,
+  }))
+);
+
 export const REGISTERED_GAMES: RegisteredGame[] = [
   {
     id: "liars-deck",
@@ -48,6 +54,14 @@ export const REGISTERED_GAMES: RegisteredGame[] = [
     minPlayers: 2,
     maxPlayers: 2,
     Component: TebakKarakterBoard,
+  },
+  {
+    id: "susun-4",
+    name: "Susun 4 Putar",
+    tagline: "Susun 4 koin segaris — hati-hati, kolom bisa tiba-tiba terbalik atau bergeser!",
+    minPlayers: 2,
+    maxPlayers: 2,
+    Component: Susun4Board,
   },
 ];
 

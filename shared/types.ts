@@ -218,6 +218,65 @@ export interface TebakKarakterView {
 }
 
 /* -------------------------------------------------------------------------- */
+/*  Game #4: Susun 4 Putar (Connect 4 with Sudden Column Twist)               */
+/* -------------------------------------------------------------------------- */
+
+export const SUSUN_4_ROWS = 6;
+export const SUSUN_4_COLS = 7;
+
+export type Susun4Phase = "PLAYING" | "ROUND_END" | "MATCH_END";
+
+export type Susun4Action =
+  | { type: "DROP_COIN"; col: number }
+  | { type: "NEXT_ROUND" };
+
+export type Susun4TwistKind = "FLIP_COLUMN" | "SHIFT_LEFT" | "SHIFT_RIGHT";
+
+export interface Susun4TwistInfo {
+  nonce: number;
+  moveCount: number;
+  kind: Susun4TwistKind;
+  targetCol: number | null;
+  triggerPlayerId: string;
+}
+
+export interface Susun4LastDrop {
+  nonce: number;
+  row: number;
+  col: number;
+  playerId: string;
+}
+
+export type Susun4RoundEndReason =
+  | "CONNECT_4"
+  | "TWIST_CONNECT_4"
+  | "DRAW_BOTH_CONNECT_4"
+  | "DRAW_BOARD_FULL";
+
+export interface Susun4RoundSummary {
+  roundNumber: number;
+  winnerId: string | null;
+  reason: Susun4RoundEndReason;
+  winningCells: [number, number][];
+}
+
+export interface Susun4View {
+  phase: Susun4Phase;
+  roundNumber: number;
+  targetWins: number;
+  scores: Record<string, number>;
+  board: (string | null)[][];
+  currentTurnPlayerId: string;
+  moveCount: number;
+  lastDrop: Susun4LastDrop | null;
+  lastTwist: Susun4TwistInfo | null;
+  winningCells: [number, number][];
+  readyForNextRound: Record<string, boolean>;
+  lastRoundSummary: Susun4RoundSummary | null;
+  winnerId: string | null;
+}
+
+/* -------------------------------------------------------------------------- */
 /*  WebSocket Messages                                                        */
 /* -------------------------------------------------------------------------- */
 
