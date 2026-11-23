@@ -94,16 +94,14 @@ describe("Susun4Engine", () => {
     expect(winRound2.newState.scores["p1"]).toBe(2);
   });
 
-  it("triggers sudden FLIP_COLUMN twist and reverses column coins without floating gaps", () => {
-    // Sequence for handleDropCoin twist branch:
-    // 0.1 (< 0.28 trigger), 0.1 (< 0.5 choose FLIP_COLUMN), 0.0 (first flippable col)
-    const engine = makeDeterministicEngine([0.1, 0.1, 0.0]);
+  it("triggers sudden FLIP_COLUMN twist as soon as 4 coins exist and respects 2-turn cooldown", () => {
+    // 0.45 (< 0.55 trigger), 0.0 (first flippable col)
+    const engine = makeDeterministicEngine([0.45, 0.0]);
     const board = makeEmptyBoard();
-    // Col 1 has [bottom: p1, mid: p2, top: p2] -> reversing makes [bottom: p2, mid: p2, top: p1]
+    // Col 1 has [bottom: p1, mid: p2, top: p2] -> 3 coins total before drop
     board[5]![1] = "p1";
     board[4]![1] = "p2";
     board[3]![1] = "p2";
-    board[5]![0] = "p1";
 
     const state: Susun4State = {
       playerIds: ["p1", "p2"],
@@ -112,9 +110,9 @@ describe("Susun4Engine", () => {
       scores: { p1: 0, p2: 0 },
       board,
       currentTurnPlayerId: "p2",
-      moveCount: 4,
-      turnsSinceLastTwist: 4,
-      dropNonce: 4,
+      moveCount: 3,
+      turnsSinceLastTwist: 3,
+      dropNonce: 3,
       twistNonce: 0,
       lastDrop: null,
       lastTwist: null,
@@ -124,7 +122,7 @@ describe("Susun4Engine", () => {
       winnerId: null,
     };
 
-    // p2 drops in col 4 (5th coin total) -> triggers FLIP_COLUMN on col 1
+    // p2 drops in col 4 (4th coin total) -> triggers FLIP_COLUMN on col 1
     const res = engine.handleAction(state, "p2", { type: "DROP_COIN", col: 4 });
     expect(res.newState.lastTwist?.kind).toBe("FLIP_COLUMN");
     expect(res.newState.lastTwist?.targetCol).toBe(1);
@@ -136,16 +134,22 @@ describe("Susun4Engine", () => {
     expect(res.newState.board[4]![1]).toBe("p2");
     expect(res.newState.board[3]![1]).toBe("p1");
     expect(res.newState.board[2]![1]).toBeNull();
+
+    // Immediate next move is within 2-turn cooldown -> must not flip again
+    const nextRes = engine.handleAction(res.newState, "p1", {
+      type: "DROP_COIN",
+      col: 5,
+    });
+    expect(nextRes.newState.lastTwist?.nonce).toBe(1);
+    expect(nextRes.newState.turnsSinceLastTwist).toBe(1);
   });
 
-  it("triggers sudden SHIFT_RIGHT twist and wraps column 6 to column 0", () => {
-    // 0.1 (< 0.28 trigger), 0.8 (>= 0.5 choose SHIFT), 0.8 (>= 0.5 SHIFT_RIGHT)
-    const engine = makeDeterministicEngine([0.1, 0.8, 0.8]);
+  it("skips flip when no column has mixed coin colors", () => {
+    const engine = makeDeterministicEngine([0.1, 0.0]);
     const board = makeEmptyBoard();
     board[5]![0] = "p1";
-    board[5]![1] = "p1";
+    board[4]![0] = "p1";
     board[5]![2] = "p2";
-    board[5]![6] = "p2";
 
     const state: Susun4State = {
       playerIds: ["p1", "p2"],
@@ -153,10 +157,10 @@ describe("Susun4Engine", () => {
       roundNumber: 1,
       scores: { p1: 0, p2: 0 },
       board,
-      currentTurnPlayerId: "p1",
-      moveCount: 4,
-      turnsSinceLastTwist: 4,
-      dropNonce: 4,
+      currentTurnPlayerId: "p2",
+      moveCount: 3,
+      turnsSinceLastTwist: 3,
+      dropNonce: 3,
       twistNonce: 0,
       lastDrop: null,
       lastTwist: null,
@@ -166,22 +170,15 @@ describe("Susun4Engine", () => {
       winnerId: null,
     };
 
-    const res = engine.handleAction(state, "p1", { type: "DROP_COIN", col: 4 });
-    expect(res.newState.lastTwist?.kind).toBe("SHIFT_RIGHT");
-    expect(res.newState.board[5]![0]).toBe("p2"); // wrapped from col 6
-    expect(res.newState.board[5]![1]).toBe("p1"); // from col 0
-    expect(res.newState.board[5]![5]).toBe("p1"); // dropped at col 4, shifted right
+    const res = engine.handleAction(state, "p2", { type: "DROP_COIN", col: 2 });
+    expect(res.newState.lastTwist).toBeNull();
+    expect(res.events.some((e) => e.type === "BOARD_TWIST")).toBe(false);
   });
 
   it("awards win if a sudden twist forms 4-in-a-row for one player", () => {
-    // Trigger SHIFT_RIGHT
-    const engine = makeDeterministicEngine([0.1, 0.8, 0.8]);
+    // 0.45 (< 0.55 trigger), 0.0 (picks first flippable col 3)
+    const flipEngine = makeDeterministicEngine([0.45, 0.0]);
     const board = makeEmptyBoard();
-    // p1 has cols 0, 1, 2 and col 6; after SHIFT_RIGHT col 6 wraps to 0 -> wait:
-    // put p1 at cols 0, 1, 2 and p1 drops at col 5 -> Wait: put p1 at cols 5, 6, 0, 1 -> already 4? No!
-    // Put p1 at cols 0, 1, 2 (row 5), and col 5 (row 5) with gap at col 3 & 4?
-    // Even simpler: FLIP_COLUMN completes horizontal 4-in-a-row at row 5!
-    const flipEngine = makeDeterministicEngine([0.1, 0.1, 0.0]);
     board[5]![0] = "p1";
     board[5]![1] = "p1";
     board[5]![2] = "p1";
@@ -216,8 +213,8 @@ describe("Susun4Engine", () => {
   });
 
   it("declares a round draw when a twist creates 4-in-a-row for both players simultaneously", () => {
-    // 0.1 (< 0.28 trigger), 0.1 (< 0.5 FLIP_COLUMN), 0.8 (picks col 3 out of [0,1,2,3])
-    const engine = makeDeterministicEngine([0.1, 0.1, 0.8]);
+    // 0.45 (< 0.55 trigger), 0.8 (picks col 3 out of [0,1,2,3])
+    const engine = makeDeterministicEngine([0.45, 0.8]);
     const board = makeEmptyBoard();
     // p1 needs row 5 col 3; p2 needs row 4 col 3
     board[5]![0] = "p1";

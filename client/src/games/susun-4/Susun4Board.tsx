@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { m } from "framer-motion";
-import { ArrowDown, ArrowLeft, ArrowRight, RefreshCw, Sparkles, Zap } from "lucide-react";
+import { ArrowDown, RefreshCw, Sparkles, Zap } from "lucide-react";
 import {
   SUSUN_4_COLS,
   SUSUN_4_ROWS,
@@ -30,13 +30,7 @@ function WinPips({ wins, target }: { wins: number; target: number }) {
 }
 
 function getTwistMessage(twist: Susun4TwistInfo): string {
-  if (twist.kind === "FLIP_COLUMN" && twist.targetCol !== null) {
-    return `Kejutan! Kolom ${twist.targetCol + 1} tiba-tiba dibalik!`;
-  }
-  if (twist.kind === "SHIFT_LEFT") {
-    return "Kejutan! Semua kolom bergeser ke kiri!";
-  }
-  return "Kejutan! Semua kolom bergeser ke kanan!";
+  return `Kejutan! Isi Kolom ${twist.targetCol + 1} tiba-tiba terbalik!`;
 }
 
 function getReasonLabel(
@@ -187,13 +181,6 @@ export function Susun4Board({
       view.lastRoundSummary?.reason === "TWIST_CONNECT_4" ||
       view.lastRoundSummary?.reason === "DRAW_BOTH_CONNECT_4");
 
-  const boardShiftAnim =
-    happenedThisMove && activeTwist?.kind === "SHIFT_LEFT"
-      ? { x: [18, 0] }
-      : happenedThisMove && activeTwist?.kind === "SHIFT_RIGHT"
-        ? { x: [-18, 0] }
-        : { x: 0 };
-
   const handleDrop = (col: number) => {
     if (!isMyTurn) return;
     if (view.board[0]?.[col] !== null) return;
@@ -255,20 +242,14 @@ export function Susun4Board({
             transition={{ duration: 0.25 }}
             className="flex items-center justify-center gap-2 rounded-xl border border-[#d4a24c]/55 bg-[#262113]/95 px-3 py-2 text-center text-xs font-semibold text-[#f3dfb8] shadow-md"
           >
-            {activeTwist.kind === "FLIP_COLUMN" ? (
-              <RefreshCw className="h-3.5 w-3.5 shrink-0 text-[#d4a24c]" />
-            ) : activeTwist.kind === "SHIFT_LEFT" ? (
-              <ArrowLeft className="h-3.5 w-3.5 shrink-0 text-[#d4a24c]" />
-            ) : (
-              <ArrowRight className="h-3.5 w-3.5 shrink-0 text-[#d4a24c]" />
-            )}
+            <RefreshCw className="h-3.5 w-3.5 shrink-0 text-[#d4a24c]" />
             <span>{getTwistMessage(activeTwist)}</span>
           </m.div>
         ) : (
           <div className="flex items-center justify-center gap-1.5 rounded-xl border border-white/8 bg-[#101813]/75 px-3 py-1.5 text-[11px] text-[#9c9689]">
             <Zap className="h-3 w-3 shrink-0 text-[#d4a24c]" />
             <span>
-              Kolom bisa tiba-tiba terbalik atau bergeser setelah minimal 5 koin!
+              Isi kolom bisa tiba-tiba terbalik mulai dari 4 koin di papan!
             </span>
           </div>
         )}
@@ -279,9 +260,7 @@ export function Susun4Board({
             const isFull = view.board[0]?.[col] !== null;
             const active = isMyTurn && !isFull;
             const isFlippedCol =
-              happenedThisMove &&
-              activeTwist?.kind === "FLIP_COLUMN" &&
-              activeTwist.targetCol === col;
+              happenedThisMove && activeTwist?.targetCol === col;
 
             return (
               <button
@@ -309,29 +288,13 @@ export function Susun4Board({
         </div>
 
         {/* 7x6 Board Grid */}
-        <m.div
-          key={
-            activeTwist && activeTwist.kind !== "FLIP_COLUMN"
-              ? `board-shift-${activeTwist.nonce}`
-              : "board-base"
-          }
-          initial={
-            happenedThisMove && activeTwist?.kind !== "FLIP_COLUMN"
-              ? boardShiftAnim
-              : false
-          }
-          animate={{ x: 0 }}
-          transition={{ type: "spring", stiffness: 280, damping: 24 }}
-          className="rounded-2xl border border-[#2d4035] bg-[#101c16] p-1.5 shadow-inner sm:p-2.5"
-        >
+        <div className="rounded-2xl border border-[#2d4035] bg-[#101c16] p-1.5 shadow-inner sm:p-2.5">
           <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
             {Array.from({ length: SUSUN_4_COLS }).map((_, col) => {
               const isColFull = view.board[0]?.[col] !== null;
               const isColInteractive = isMyTurn && !isColFull;
               const isFlippedCol =
-                happenedThisMove &&
-                activeTwist?.kind === "FLIP_COLUMN" &&
-                activeTwist.targetCol === col;
+                happenedThisMove && activeTwist?.targetCol === col;
 
               return (
                 <m.div
@@ -402,7 +365,7 @@ export function Susun4Board({
               );
             })}
           </div>
-        </m.div>
+        </div>
 
         {/* Round End Banner */}
         {view.phase === "ROUND_END" && view.lastRoundSummary && (

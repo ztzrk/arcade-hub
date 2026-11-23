@@ -58,7 +58,7 @@ export const REGISTERED_GAMES: RegisteredGame[] = [
   {
     id: "susun-4",
     name: "Susun 4 Putar",
-    tagline: "Susun 4 koin segaris — hati-hati, kolom bisa tiba-tiba terbalik atau bergeser!",
+    tagline: "Susun 4 koin segaris — hati-hati, isi kolom bisa tiba-tiba terbalik!",
     minPlayers: 2,
     maxPlayers: 2,
     Component: Susun4Board,

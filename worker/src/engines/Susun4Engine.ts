@@ -14,9 +14,9 @@ import {
 import { EngineError, type EngineResult, type IGameEngine } from "./IGameEngine.ts";
 
 const TARGET_WINS = 2;
-const MIN_COINS_FOR_TWIST = 5;
+const MIN_COINS_FOR_TWIST = 4;
 const TWIST_COOLDOWN_MOVES = 2;
-const TWIST_PROBABILITY = 0.28;
+const TWIST_PROBABILITY = 0.55;
 
 export interface Susun4State {
   playerIds: [string, string];
@@ -167,19 +167,6 @@ function getFlippableColumns(board: (string | null)[][]): number[] {
   return flippable;
 }
 
-function canShiftColumns(board: (string | null)[][]): boolean {
-  const signatures = new Set<string>();
-  for (let c = 0; c < SUSUN_4_COLS; c++) {
-    let sig = "";
-    for (let r = 0; r < SUSUN_4_ROWS; r++) {
-      sig += board[r]![c] ?? ".";
-      sig += "|";
-    }
-    signatures.add(sig);
-  }
-  return signatures.size > 1;
-}
-
 function applyFlipColumn(board: (string | null)[][], col: number): void {
   const stack: string[] = [];
   for (let r = SUSUN_4_ROWS - 1; r >= 0; r--) {
@@ -193,54 +180,23 @@ function applyFlipColumn(board: (string | null)[][], col: number): void {
   }
 }
 
-function applyShiftColumns(
-  board: (string | null)[][],
-  direction: "LEFT" | "RIGHT"
-): void {
-  for (let r = 0; r < SUSUN_4_ROWS; r++) {
-    const oldRow = [...board[r]!];
-    for (let c = 0; c < SUSUN_4_COLS; c++) {
-      const sourceCol =
-        direction === "LEFT"
-          ? (c + 1) % SUSUN_4_COLS
-          : (c - 1 + SUSUN_4_COLS) % SUSUN_4_COLS;
-      board[r]![c] = oldRow[sourceCol]!;
-    }
-  }
-}
-
 function pickAndApplyTwist(
   board: (string | null)[][],
   rng: () => number
-): { kind: Susun4TwistKind; targetCol: number | null } | null {
+): { kind: Susun4TwistKind; targetCol: number } | null {
   const flippableCols = getFlippableColumns(board);
-  const shiftAllowed = canShiftColumns(board);
-
-  if (flippableCols.length === 0 && !shiftAllowed) {
+  if (flippableCols.length === 0) {
     return null;
   }
 
-  let useFlip = false;
-  if (flippableCols.length > 0 && shiftAllowed) {
-    useFlip = rng() < 0.5;
-  } else if (flippableCols.length > 0) {
-    useFlip = true;
-  }
-
-  if (useFlip) {
-    const colIdx = Math.floor(rng() * flippableCols.length) % flippableCols.length;
-    const targetCol = flippableCols[colIdx]!;
-    applyFlipColumn(board, targetCol);
-    return { kind: "FLIP_COLUMN", targetCol };
-  }
-
-  const kind: Susun4TwistKind = rng() < 0.5 ? "SHIFT_LEFT" : "SHIFT_RIGHT";
-  applyShiftColumns(board, kind === "SHIFT_LEFT" ? "LEFT" : "RIGHT");
-  return { kind, targetCol: null };
+  const colIdx = Math.floor(rng() * flippableCols.length) % flippableCols.length;
+  const targetCol = flippableCols[colIdx]!;
+  applyFlipColumn(board, targetCol);
+  return { kind: "FLIP_COLUMN", targetCol };
 }
 
 /**
- * Connect 4 game engine with sudden random column flips and shifts.
+ * Connect 4 game engine with sudden random column flips.
  */
 export class Susun4Engine
   implements IGameEngine<Susun4State, Susun4Action, Susun4View>
@@ -248,7 +204,7 @@ export class Susun4Engine
   readonly id = "susun-4";
   readonly name = "Susun 4 Putar";
   readonly tagline =
-    "Susun 4 koin segaris — hati-hati, kolom bisa tiba-tiba terbalik atau bergeser!";
+    "Susun 4 koin segaris — hati-hati, isi kolom bisa tiba-tiba terbalik!";
   readonly minPlayers = 2;
   readonly maxPlayers = 2;
 

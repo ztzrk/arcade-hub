@@ -230,13 +230,13 @@ export type Susun4Action =
   | { type: "DROP_COIN"; col: number }
   | { type: "NEXT_ROUND" };
 
-export type Susun4TwistKind = "FLIP_COLUMN" | "SHIFT_LEFT" | "SHIFT_RIGHT";
+export type Susun4TwistKind = "FLIP_COLUMN";
 
 export interface Susun4TwistInfo {
   nonce: number;
   moveCount: number;
   kind: Susun4TwistKind;
-  targetCol: number | null;
+  targetCol: number;
   triggerPlayerId: string;
 }
 
