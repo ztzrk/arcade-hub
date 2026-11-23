@@ -1,41 +1,65 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { m } from "framer-motion";
 import {
+  ArrowLeftRight,
   Award,
   BadgeCheck,
+  BookOpen,
+  Calendar,
   Check,
   Copy,
   Download,
   Eye,
   EyeOff,
+  Flame,
   MessageCircle,
   RefreshCw,
   RotateCcw,
   Shield,
   Sparkles,
   Trophy,
+  Zap,
 } from "lucide-react";
 import {
+  COACH_TIMEOUT_OPTIONS,
   COURT_SLOTS,
+  HAIKYUU_PLAYERS,
+  HAIKYUU_SYNERGY_CATALOG,
   HARUKO_BRACKET,
   KARASUNO_FORMATIONS,
   POSITION_LABELS,
   SCHOOL_PACKS,
+  computeMatchupEdge,
+  createLiveMatchState,
+  createSeededRng,
   drawPackCandidates,
   evaluateTeam,
+  finalizeLiveMatch,
+  getDailyChallengeKey,
+  getFormationStatus,
   getPotentialResonances,
+  playNextMatchSet,
   rollSchoolPack,
   simulateHarukoMatch,
+  type CoachTimeoutId,
   type CourtSlotId,
   type FormationId,
   type HaikyuuDraftMode,
   type HaikyuuPlayer,
   type LineupMap,
+  type LiveMatchState,
   type SchoolPack,
   type TournamentMatchResult,
 } from "@arcade-hub/shared";
 import { soundManager } from "../../shared/audio";
+import {
+  loadKarasunoCollection,
+  recordRunToCollection,
+  type HaikyuuBadgeMeta,
+  type KarasunoCollection,
+} from "./collection";
 import { JerseyAvatar } from "./JerseyAvatar";
+import { NotebookModal } from "./NotebookModal";
 import { VolleyballCourt } from "./VolleyballCourt";
 import {
   buildVerificationCode,
@@ -95,8 +119,15 @@ interface KarasunoHarukoBoardProps {
 export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
   const [phase, setPhase] = useState<GamePhase>("SETUP");
   const [mode, setMode] = useState<HaikyuuDraftMode>("classic");
+  const [runType, setRunType] = useState<"free" | "daily">("free");
   const [formationId, setFormationId] = useState<FormationId>("run-gun");
   const [career, setCareer] = useState<CareerStats>(() => loadCareerStats());
+  const [collection, setCollection] = useState<KarasunoCollection>(() =>
+    loadKarasunoCollection()
+  );
+  const [showNotebook, setShowNotebook] = useState(false);
+  const [newlyUnlockedBadges, setNewlyUnlockedBadges] = useState<HaikyuuBadgeMeta[]>([]);
+  const dailyKey = useMemo(() => getDailyChallengeKey(), []);
 
   // Draft state
   const [round, setRound] = useState(1);
@@ -110,10 +141,20 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
   const [spinRunKey, setSpinRunKey] = useState(0);
   const [selectedPlayer, setSelectedPlayer] = useState<HaikyuuPlayer | null>(null);
   const [rerollsLeft, setRerollsLeft] = useState(1);
+  const [trainingBonus, setTrainingBonus] = useState(0);
+  const [extraDrawNext, setExtraDrawNext] = useState(false);
+  const [midDraftEventPending, setMidDraftEventPending] = useState(false);
+  const [midDraftChoiceLabel, setMidDraftChoiceLabel] = useState<string | null>(null);
+  const [swapsLeft, setSwapsLeft] = useState(1);
+  const [swapMode, setSwapMode] = useState(false);
+  const [swapSourceSlot, setSwapSourceSlot] = useState<CourtSlotId | null>(null);
 
   // Tournament state
   const [matchIndex, setMatchIndex] = useState(0);
   const [matchHistory, setMatchHistory] = useState<TournamentMatchResult[]>([]);
+  const [liveMatch, setLiveMatch] = useState<LiveMatchState | null>(null);
+  const [coachTimeoutsLeft, setCoachTimeoutsLeft] = useState(2);
+  const [pendingCoachCall, setPendingCoachCall] = useState<CoachTimeoutId | null>(null);
   const [currentMatchResult, setCurrentMatchResult] =
     useState<TournamentMatchResult | null>(null);
   const [completedAt, setCompletedAt] = useState<Date>(() => new Date());
@@ -121,6 +162,8 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
 
   const reelTimersRef = useRef<number[]>([]);
   const statsRecordedRef = useRef(false);
+  const draftRngRef = useRef<() => number>(Math.random);
+  const matchRngRef = useRef<() => number>(Math.random);
 
   const clearSpinTimers = () => {
     for (const id of reelTimersRef.current) {
@@ -144,14 +187,34 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
   );
 
   const evaluation = useMemo(
-    () => evaluateTeam(lineup, formationId),
-    [lineup, formationId]
+    () => evaluateTeam(lineup, formationId, trainingBonus),
+    [lineup, formationId, trainingBonus]
+  );
+
+  const formationStatus = useMemo(
+    () =>
+      getFormationStatus(
+        lineup,
+        formationId,
+        evaluation.stats.defense,
+        evaluation.activeSynergies.length
+      ),
+    [lineup, formationId, evaluation.stats.defense, evaluation.activeSynergies.length]
   );
 
   const startNewRun = () => {
     clearSpinTimers();
     soundManager.play("reveal");
     statsRecordedRef.current = false;
+    setNewlyUnlockedBadges([]);
+    draftRngRef.current =
+      runType === "daily"
+        ? createSeededRng(`haruko-daily-draft:${dailyKey}`)
+        : Math.random;
+    matchRngRef.current =
+      runType === "daily"
+        ? createSeededRng(`haruko-daily-match:${dailyKey}`)
+        : Math.random;
     setPhase("DRAFT");
     setRound(1);
     setLineup({});
@@ -163,18 +226,30 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
     setReelItems([]);
     setSelectedPlayer(null);
     setRerollsLeft(mode === "classic" ? 1 : 0);
+    setTrainingBonus(0);
+    setExtraDrawNext(false);
+    setMidDraftEventPending(false);
+    setMidDraftChoiceLabel(null);
+    setSwapsLeft(1);
+    setSwapMode(false);
+    setSwapSourceSlot(null);
     setMatchIndex(0);
     setMatchHistory([]);
+    setLiveMatch(null);
+    setCoachTimeoutsLeft(mode === "classic" ? 2 : 1);
+    setPendingCoachCall(null);
     setCurrentMatchResult(null);
     setCopiedShare(false);
   };
 
   const triggerSpin = (consumeReroll = false) => {
-    if (spinning) return;
+    if (spinning || midDraftEventPending) return;
     if (consumeReroll && rerollsLeft <= 0) return;
 
     clearSpinTimers();
     setSelectedPlayer(null);
+    setSwapMode(false);
+    setSwapSourceSlot(null);
     if (consumeReroll) {
       setCurrentPack(null);
       setPackCandidates([]);
@@ -185,7 +260,12 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
     setSpinRunKey((k) => k + 1);
 
     const usedSet = new Set(usedPackIds);
-    const chosen = rollSchoolPack(usedSet, draftedPlayerIds);
+    const rng = draftRngRef.current;
+    const chosen = rollSchoolPack(usedSet, draftedPlayerIds, rng);
+    const drawCount = extraDrawNext ? 4 : 3;
+    if (extraDrawNext) {
+      setExtraDrawNext(false);
+    }
 
     const reel: SchoolPack[] = [];
     for (let i = 0; i < REEL_TOTAL_CARDS; i++) {
@@ -194,7 +274,7 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
       } else {
         const candidates = SCHOOL_PACKS.filter((p) => p.id !== chosen.id);
         const randomPack =
-          candidates[Math.floor(Math.random() * candidates.length)] ??
+          candidates[Math.floor(rng() * candidates.length)] ??
           SCHOOL_PACKS[0]!;
         reel.push(randomPack);
       }
@@ -218,10 +298,55 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
       setSpinning(false);
       setSpinLanded(false);
       setCurrentPack(chosen);
-      setPackCandidates(drawPackCandidates(chosen.id, draftedPlayerIds, 3));
+      setPackCandidates(
+        drawPackCandidates(chosen.id, draftedPlayerIds, drawCount, rng)
+      );
       setUsedPackIds((prev) => [...prev, chosen.id]);
     }, 1580);
     reelTimersRef.current.push(finishTimer);
+  };
+
+  const handleMidDraftChoice = (choice: "training" | "scouting" | "swap") => {
+    soundManager.play("reveal");
+    if (choice === "training") {
+      setTrainingBonus((b) => Number((b + 1.0).toFixed(1)));
+      setMidDraftChoiceLabel("Latihan Intensif (+1.0 OVR)");
+    } else if (choice === "scouting") {
+      setRerollsLeft((r) => r + 1);
+      setExtraDrawNext(true);
+      setMidDraftChoiceLabel("Scouting Mendalam (+1 Timeout & 4 Kandidat)");
+    } else {
+      setSwapsLeft((s) => s + 1);
+      setMidDraftChoiceLabel("Rotasi Taktis (+1 Tukar Posisi)");
+    }
+    setMidDraftEventPending(false);
+  };
+
+  const handleSwapSlotClick = (slotId: CourtSlotId) => {
+    if (!swapMode || swapsLeft <= 0 || !lineup[slotId]) return;
+    if (!swapSourceSlot) {
+      soundManager.play("click");
+      setSwapSourceSlot(slotId);
+      return;
+    }
+    if (swapSourceSlot === slotId) {
+      soundManager.play("click");
+      setSwapSourceSlot(null);
+      return;
+    }
+    const sourcePlayer = lineup[swapSourceSlot];
+    const targetPlayer = lineup[slotId];
+    if (!sourcePlayer || !targetPlayer) return;
+
+    soundManager.play("card");
+    setLineup((prev) => ({
+      ...prev,
+      [swapSourceSlot]: targetPlayer,
+      [slotId]: sourcePlayer,
+    }));
+    setSwapsLeft((s) => Math.max(0, s - 1));
+    setSwapSourceSlot(null);
+    setSwapMode(false);
   };
 
   const handlePlaceInSlot = (slotId: CourtSlotId) => {
@@ -239,12 +364,20 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
     setReelItems([]);
 
     if (round >= TOTAL_DRAFT_ROUNDS) {
+      soundManager.play("whistle");
+      setSwapMode(false);
+      setSwapSourceSlot(null);
       setPhase("TOURNAMENT");
       setMatchIndex(0);
       setMatchHistory([]);
+      setLiveMatch(null);
       setCurrentMatchResult(null);
     } else {
-      setRound((r) => r + 1);
+      const nextRound = round + 1;
+      setRound(nextRound);
+      if (nextRound === 4) {
+        setMidDraftEventPending(true);
+      }
     }
   };
 
@@ -268,21 +401,70 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
       saveCareerStats(updated);
       return updated;
     });
+
+    setCollection((prev) => {
+      const { updated, newlyUnlockedBadges: unlocked } = recordRunToCollection(
+        prev,
+        {
+          lineup,
+          evaluation,
+          matchHistory: history,
+          mode,
+          dailyKey: runType === "daily" ? dailyKey : null,
+        }
+      );
+      setNewlyUnlockedBadges(unlocked);
+      return updated;
+    });
   };
 
-  const playCurrentMatch = () => {
-    const opponent = HARUKO_BRACKET[matchIndex];
-    if (!opponent || currentMatchResult) return;
-
-    const result = simulateHarukoMatch(evaluation, lineup, opponent);
-    soundManager.play(result.won ? "win" : "wrong");
+  const finalizeMatchIntoHistory = (finishedState: LiveMatchState) => {
+    const result = finalizeLiveMatch(finishedState);
+    const isFinal = matchIndex === HARUKO_BRACKET.length - 1;
+    if (result.won && isFinal) {
+      soundManager.play("cheer");
+      window.setTimeout(() => soundManager.play("win"), 180);
+    } else {
+      soundManager.play(result.won ? "win" : "wrong");
+    }
     setCurrentMatchResult(result);
     const nextHistory = [...matchHistory, result];
     setMatchHistory(nextHistory);
 
-    const isFinal = matchIndex === HARUKO_BRACKET.length - 1;
     if (!result.won || isFinal) {
       recordRunOutcome(nextHistory);
+    }
+  };
+
+  const playCurrentMatchSet = () => {
+    const opponent = HARUKO_BRACKET[matchIndex];
+    if (!opponent || currentMatchResult) return;
+
+    setSwapMode(false);
+    setSwapSourceSlot(null);
+
+    const rng = matchRngRef.current;
+    const isOpeningSet = !liveMatch;
+    const baseState =
+      liveMatch ?? createLiveMatchState(evaluation, lineup, opponent, rng);
+    const callToUse = pendingCoachCall ?? undefined;
+    if (callToUse && coachTimeoutsLeft > 0) {
+      setCoachTimeoutsLeft((c) => Math.max(0, c - 1));
+    }
+    setPendingCoachCall(null);
+
+    const nextState = playNextMatchSet(baseState, callToUse, rng);
+    setLiveMatch(nextState);
+
+    if (nextState.finished) {
+      finalizeMatchIntoHistory(nextState);
+    } else {
+      const lastSet = nextState.sets[nextState.sets.length - 1];
+      const kWonSet = lastSet ? lastSet.karasuno > lastSet.opponent : true;
+      if (isOpeningSet) {
+        soundManager.play("whistle");
+      }
+      soundManager.play(kWonSet ? "spike" : "click");
     }
   };
 
@@ -294,17 +476,33 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
       return;
     }
     setMatchIndex((i) => i + 1);
+    setLiveMatch(null);
+    setPendingCoachCall(null);
     setCurrentMatchResult(null);
   };
 
   const simulateRemainingMatches = () => {
     const history = [...matchHistory];
-    let idx = currentMatchResult ? matchIndex + 1 : matchIndex;
+    let idx = matchIndex;
     let eliminated = currentMatchResult ? !currentMatchResult.won : false;
+
+    const rng = matchRngRef.current;
+    if (!currentMatchResult && liveMatch && !liveMatch.finished) {
+      let finishing = liveMatch;
+      while (!finishing.finished) {
+        finishing = playNextMatchSet(finishing, undefined, rng);
+      }
+      const res = finalizeLiveMatch(finishing);
+      history.push(res);
+      if (!res.won) eliminated = true;
+      idx += 1;
+    } else if (currentMatchResult) {
+      idx += 1;
+    }
 
     while (!eliminated && idx < HARUKO_BRACKET.length) {
       const opp = HARUKO_BRACKET[idx]!;
-      const res = simulateHarukoMatch(evaluation, lineup, opp);
+      const res = simulateHarukoMatch(evaluation, lineup, opp, rng);
       history.push(res);
       if (!res.won) {
         eliminated = true;
@@ -314,7 +512,14 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
 
     const wonAll =
       history.length === HARUKO_BRACKET.length && history.every((m) => m.won);
-    soundManager.play(wonAll ? "win" : "wrong");
+    if (wonAll) {
+      soundManager.play("cheer");
+      window.setTimeout(() => soundManager.play("win"), 180);
+    } else {
+      soundManager.play("wrong");
+    }
+    setLiveMatch(null);
+    setPendingCoachCall(null);
     setMatchHistory(history);
     recordRunOutcome(history);
     setPhase("SUMMARY");
@@ -336,8 +541,9 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
       evaluation,
       matchHistory,
       completedAt,
+      dailyKey: runType === "daily" ? dailyKey : null,
     }),
-    [mode, formationId, lineup, evaluation, matchHistory, completedAt]
+    [mode, formationId, lineup, evaluation, matchHistory, completedAt, runType, dailyKey]
   );
 
   const verificationCode = useMemo(
@@ -365,8 +571,18 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
   /*  RENDER: SETUP (Matchday Broadsheet & Coach's Clipboard)                 */
   /* ------------------------------------------------------------------------ */
   if (phase === "SETUP") {
+    const todayDaily =
+      collection.dailyRecord?.dateKey === dailyKey ? collection.dailyRecord : null;
+
     return (
       <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-10">
+        {showNotebook && (
+          <NotebookModal
+            collection={collection}
+            onClose={() => setShowNotebook(false)}
+          />
+        )}
+
         {/* Editorial Masthead */}
         <div className="border-b-2 border-[#f97316] pb-5">
           <div className="flex flex-wrap items-end justify-between gap-4">
@@ -381,31 +597,48 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
               </p>
             </div>
 
-            {/* Inline Box-Score Career Strip */}
-            <div className="flex items-center divide-x divide-white/12 border border-white/12 bg-[#161714]">
-              <div className="px-3.5 py-2 text-center">
-                <span className="block text-[10px] text-[#9c9689]">Run</span>
-                <span className="font-mono-tabular text-base font-bold text-[#ebe5d8]">
-                  {career.runs}
+            <div className="flex flex-wrap items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => {
+                  soundManager.play("click");
+                  setShowNotebook(true);
+                }}
+                className="flex min-h-[42px] items-center gap-2 rounded-md border border-[#d4a24c]/40 bg-[#181611] px-3.5 py-2 text-xs font-semibold text-[#ebe5d8] hover:border-[#f97316] transition-colors cursor-pointer"
+              >
+                <BookOpen className="h-4 w-4 text-[#f97316]" />
+                <span>
+                  Notebook ({collection.unlockedPlayerIds.length}/{HAIKYUU_PLAYERS.length} •{" "}
+                  {collection.unlockedSynergyIds.length}/{HAIKYUU_SYNERGY_CATALOG.length})
                 </span>
-              </div>
-              <div className="px-3.5 py-2 text-center">
-                <span className="block text-[10px] text-[#9c9689]">Juara</span>
-                <span className="font-mono-tabular text-base font-bold text-[#f97316]">
-                  {career.titles}
-                </span>
-              </div>
-              <div className="px-3.5 py-2 text-center">
-                <span className="block text-[10px] text-[#9c9689]">0 Set Kalah</span>
-                <span className="font-mono-tabular text-base font-bold text-[#d4a24c]">
-                  {career.perfectRuns}
-                </span>
-              </div>
-              <div className="px-3.5 py-2 text-center">
-                <span className="block text-[10px] text-[#9c9689]">Best OVR</span>
-                <span className="font-mono-tabular text-base font-bold text-emerald-400">
-                  {career.bestOvr > 0 ? career.bestOvr.toFixed(1) : "-"}
-                </span>
+              </button>
+
+              {/* Inline Box-Score Career Strip */}
+              <div className="flex items-center divide-x divide-white/12 border border-white/12 bg-[#161714]">
+                <div className="px-3.5 py-2 text-center">
+                  <span className="block text-[10px] text-[#9c9689]">Run</span>
+                  <span className="font-mono-tabular text-base font-bold text-[#ebe5d8]">
+                    {career.runs}
+                  </span>
+                </div>
+                <div className="px-3.5 py-2 text-center">
+                  <span className="block text-[10px] text-[#9c9689]">Juara</span>
+                  <span className="font-mono-tabular text-base font-bold text-[#f97316]">
+                    {career.titles}
+                  </span>
+                </div>
+                <div className="px-3.5 py-2 text-center">
+                  <span className="block text-[10px] text-[#9c9689]">0 Set Kalah</span>
+                  <span className="font-mono-tabular text-base font-bold text-[#d4a24c]">
+                    {career.perfectRuns}
+                  </span>
+                </div>
+                <div className="px-3.5 py-2 text-center">
+                  <span className="block text-[10px] text-[#9c9689]">Best OVR</span>
+                  <span className="font-mono-tabular text-base font-bold text-emerald-400">
+                    {career.bestOvr > 0 ? career.bestOvr.toFixed(1) : "-"}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -457,50 +690,95 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
             </div>
           </div>
 
-          {/* Right: Mode + Launch */}
+          {/* Right: Mode + Daily Seed + Launch */}
           <div className="flex flex-col justify-between gap-5">
-            <div>
-              <h2 className="mb-3 text-sm font-semibold text-[#ebe5d8]">
-                Mode Pengetahuan
-              </h2>
-              <div className="space-y-2.5">
-                <button
-                  type="button"
-                  onClick={() => setMode("classic")}
-                  className={`flex w-full items-start gap-3 rounded-md border px-3.5 py-3 text-left transition-colors cursor-pointer ${
-                    mode === "classic"
-                      ? "border-[#f97316] bg-[#1e1813]"
-                      : "border-white/12 bg-[#151614] hover:border-white/25"
-                  }`}
-                >
-                  <Eye className="mt-0.5 h-4 w-4 shrink-0 text-[#f97316]" />
-                  <div>
-                    <p className="text-sm font-semibold text-[#ebe5d8]">Mode Klasik</p>
-                    <p className="mt-0.5 text-xs text-[#9c9689]">
-                      Posisi, OVR, dan resonansi terlihat + 1x Timeout Ukai.
+            <div className="space-y-4">
+              <div>
+                <h2 className="mb-2.5 text-sm font-semibold text-[#ebe5d8]">
+                  Tantangan Draft
+                </h2>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRunType("free")}
+                    className={`rounded-md border px-3 py-2.5 text-left transition-colors cursor-pointer ${
+                      runType === "free"
+                        ? "border-[#f97316] bg-[#1e1813]"
+                        : "border-white/12 bg-[#151614] hover:border-white/25"
+                    }`}
+                  >
+                    <p className="text-xs font-semibold text-[#ebe5d8]">Free Draft</p>
+                    <p className="mt-0.5 text-[10px] text-[#9c9689]">
+                      Spin acak bebas tanpa batas.
                     </p>
-                  </div>
-                </button>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRunType("daily")}
+                    className={`rounded-md border px-3 py-2.5 text-left transition-colors cursor-pointer ${
+                      runType === "daily"
+                        ? "border-[#d4a24c] bg-[#211b10]"
+                        : "border-white/12 bg-[#151614] hover:border-white/25"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <p className="text-xs font-semibold text-[#ebe5d8]">
+                        Daily Seed
+                      </p>
+                      <Calendar className="h-3.5 w-3.5 text-[#d4a24c]" />
+                    </div>
+                    <p className="mt-0.5 text-[10px] text-[#9c9689]">
+                      {todayDaily
+                        ? `Best ${todayDaily.bestOvr.toFixed(1)} • ${todayDaily.champion ? "Juara!" : `${todayDaily.wins}W`}`
+                        : `Seed ${dailyKey}`}
+                    </p>
+                  </button>
+                </div>
+              </div>
 
-                <button
-                  type="button"
-                  onClick={() => setMode("blind")}
-                  className={`flex w-full items-start gap-3 rounded-md border px-3.5 py-3 text-left transition-colors cursor-pointer ${
-                    mode === "blind"
-                      ? "border-[#f97316] bg-[#1e1813]"
-                      : "border-white/12 bg-[#151614] hover:border-white/25"
-                  }`}
-                >
-                  <EyeOff className="mt-0.5 h-4 w-4 shrink-0 text-[#d4a24c]" />
-                  <div>
-                    <p className="text-sm font-semibold text-[#ebe5d8]">
-                      Mode Blind (Expert)
-                    </p>
-                    <p className="mt-0.5 text-xs text-[#9c9689]">
-                      OVR & posisi asli disembunyikan sampai pemain ditempatkan.
-                    </p>
-                  </div>
-                </button>
+              <div>
+                <h2 className="mb-2.5 text-sm font-semibold text-[#ebe5d8]">
+                  Mode Pengetahuan
+                </h2>
+                <div className="space-y-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setMode("classic")}
+                    className={`flex w-full items-start gap-3 rounded-md border px-3.5 py-3 text-left transition-colors cursor-pointer ${
+                      mode === "classic"
+                        ? "border-[#f97316] bg-[#1e1813]"
+                        : "border-white/12 bg-[#151614] hover:border-white/25"
+                    }`}
+                  >
+                    <Eye className="mt-0.5 h-4 w-4 shrink-0 text-[#f97316]" />
+                    <div>
+                      <p className="text-sm font-semibold text-[#ebe5d8]">Mode Klasik</p>
+                      <p className="mt-0.5 text-xs text-[#9c9689]">
+                        Posisi, OVR, dan resonansi terlihat + 1x Timeout Ukai.
+                      </p>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setMode("blind")}
+                    className={`flex w-full items-start gap-3 rounded-md border px-3.5 py-3 text-left transition-colors cursor-pointer ${
+                      mode === "blind"
+                        ? "border-[#f97316] bg-[#1e1813]"
+                        : "border-white/12 bg-[#151614] hover:border-white/25"
+                    }`}
+                  >
+                    <EyeOff className="mt-0.5 h-4 w-4 shrink-0 text-[#d4a24c]" />
+                    <div>
+                      <p className="text-sm font-semibold text-[#ebe5d8]">
+                        Mode Blind (Expert)
+                      </p>
+                      <p className="mt-0.5 text-xs text-[#9c9689]">
+                        OVR & posisi asli disembunyikan sampai pemain ditempatkan.
+                      </p>
+                    </div>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -510,7 +788,9 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
                 onClick={startNewRun}
                 className="flex min-h-[48px] w-full items-center justify-center rounded-md bg-[#f97316] px-6 py-3 text-sm font-bold text-[#111210] hover:bg-[#fb923c] transition-colors cursor-pointer"
               >
-                Mulai Draft Karasuno
+                {runType === "daily"
+                  ? `Mulai Daily Draft (${dailyKey})`
+                  : "Mulai Draft Karasuno"}
               </button>
               {onExit && (
                 <button
@@ -532,6 +812,8 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
   /*  RENDER: DRAFT (7 ROUNDS)                                                */
   /* ------------------------------------------------------------------------ */
   if (phase === "DRAFT") {
+    const activeFormation = KARASUNO_FORMATIONS.find((f) => f.id === formationId);
+
     return (
       <div className="mx-auto max-w-5xl px-3.5 py-4 sm:px-5 sm:py-6">
         {/* Clean Matchday Progress Bar */}
@@ -560,14 +842,34 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              disabled={draftedPlayerIds.size < 2 || swapsLeft <= 0 || spinning}
+              onClick={() => {
+                soundManager.play("click");
+                setSelectedPlayer(null);
+                setSwapSourceSlot(null);
+                setSwapMode((prev) => !prev);
+              }}
+              className={`flex min-h-[34px] items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-35 ${
+                swapMode
+                  ? "border-[#d4a24c] bg-[#d4a24c]/25 text-[#f7d894]"
+                  : "border-white/15 bg-[#161714] text-[#cfc8ba] hover:border-white/30"
+              }`}
+              title="Tukar posisi 2 pemain yang sudah dipasang"
+            >
+              <ArrowLeftRight className="h-3.5 w-3.5" />
+              {swapMode ? "Batal Tukar" : `Tukar (${swapsLeft})`}
+            </button>
+
             {mode === "classic" && (
               <button
                 type="button"
                 disabled={!currentPack || spinning || rerollsLeft <= 0}
                 onClick={() => triggerSpin(true)}
                 className="flex min-h-[34px] items-center gap-1.5 rounded-md border border-[#d4a24c]/40 bg-[#d4a24c]/10 px-2.5 py-1 text-xs font-medium text-[#d4a24c] hover:bg-[#d4a24c]/20 disabled:cursor-not-allowed disabled:opacity-35 transition-colors cursor-pointer"
-                title="Ulangi spin sekolah (1x per run)"
+                title="Ulangi spin sekolah"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
                 Timeout Ukai ({rerollsLeft})
@@ -582,15 +884,104 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
           </div>
         </div>
 
+        {swapMode && (
+          <div className="mb-4 flex items-center justify-between gap-2 rounded-md border border-[#d4a24c]/45 bg-[#241d11] px-3.5 py-2 text-xs text-[#f7d894]">
+            <span>
+              {swapSourceSlot
+                ? `Slot ${swapSourceSlot} dipilih — klik pemain kedua di lapangan untuk menukar posisi.`
+                : "Mode Tukar Aktif: klik pemain pertama di lapangan yang ingin dipindah."}
+            </span>
+          </div>
+        )}
+
         {/* 2-Column Draft Workspace */}
         <div className="grid gap-5 lg:grid-cols-[1.12fr_0.88fr]">
           {/* LEFT: Spin & School Roster */}
           <div className="space-y-4">
-            {!currentPack ? (
+            {midDraftEventPending ? (
+              <m.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-lg border border-[#d4a24c]/50 bg-[#171510] p-5"
+              >
+                <div className="flex items-center gap-2 text-xs font-bold tracking-wider text-[#d4a24c]">
+                  <Flame className="h-4 w-4 text-[#f97316]" />
+                  KAMP LATIHAN TENGAH DRAFT (PUTARAN 4)
+                </div>
+                <h2 className="font-display mt-1.5 text-2xl text-[#ebe5d8]">
+                  Pilih Fokus Pelatih Ukai
+                </h2>
+                <p className="mt-1 text-xs text-[#9c9689]">
+                  Sebelum paruh kedua draft dimulai, tentukan bonus taktis untuk
+                  memperkuat skuad Karasuno.
+                </p>
+
+                <div className="mt-4 space-y-2.5">
+                  <button
+                    type="button"
+                    onClick={() => handleMidDraftChoice("training")}
+                    className="flex w-full items-start justify-between gap-3 rounded-md border border-white/12 bg-[#141513] p-3 text-left hover:border-[#f97316] transition-colors cursor-pointer"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-[#ebe5d8]">
+                        Latihan Fisik Intensif
+                      </p>
+                      <p className="mt-0.5 text-xs text-[#9c9689]">
+                        Tambahan permanen +1.0 Team OVR sepanjang turnamen.
+                      </p>
+                    </div>
+                    <span className="font-mono-tabular shrink-0 rounded bg-[#f97316]/15 px-2 py-0.5 text-xs font-bold text-[#fb923c]">
+                      +1.0 OVR
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleMidDraftChoice("scouting")}
+                    className="flex w-full items-start justify-between gap-3 rounded-md border border-white/12 bg-[#141513] p-3 text-left hover:border-[#f97316] transition-colors cursor-pointer"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-[#ebe5d8]">
+                        Scouting Ekstra Takeda
+                      </p>
+                      <p className="mt-0.5 text-xs text-[#9c9689]">
+                        Dapat +1 Timeout Ukai &amp; spin berikutnya membuka 4 kandidat sekaligus.
+                      </p>
+                    </div>
+                    <span className="font-mono-tabular shrink-0 rounded bg-emerald-500/15 px-2 py-0.5 text-xs font-bold text-emerald-300">
+                      +1 SPIN / 4 KARTU
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleMidDraftChoice("swap")}
+                    className="flex w-full items-start justify-between gap-3 rounded-md border border-white/12 bg-[#141513] p-3 text-left hover:border-[#f97316] transition-colors cursor-pointer"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-[#ebe5d8]">
+                        Penyesuaian Rotasi Lapangan
+                      </p>
+                      <p className="mt-0.5 text-xs text-[#9c9689]">
+                        Tambah +1 hak Tukar Posisi untuk mengoptimalkan penalti &amp; posisi.
+                      </p>
+                    </div>
+                    <span className="font-mono-tabular shrink-0 rounded bg-[#d4a24c]/15 px-2 py-0.5 text-xs font-bold text-[#d4a24c]">
+                      +1 TUKAR
+                    </span>
+                  </button>
+                </div>
+              </m.div>
+            ) : !currentPack ? (
               <div className="rounded-lg border border-white/12 bg-[#151614] p-5 text-center">
                 <h2 className="font-display text-2xl text-[#ebe5d8]">
                   {spinning ? "Mengundi Sekolah..." : `Spin Sekolah #${round}`}
                 </h2>
+                {extraDrawNext && !spinning && (
+                  <p className="mt-1 text-xs font-medium text-emerald-400">
+                    Scouting Aktif: spin ini akan menampilkan 4 kandidat pemain!
+                  </p>
+                )}
 
                 {/* Mechanical Reel */}
                 <div className="relative my-5 h-[88px] overflow-hidden border-y border-white/15 bg-[#10110f]">
@@ -693,6 +1084,8 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
                         type="button"
                         onClick={() => {
                           soundManager.play("click");
+                          setSwapMode(false);
+                          setSwapSourceSlot(null);
                           setSelectedPlayer(isSelected ? null : player);
                         }}
                         style={{
@@ -700,7 +1093,7 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
                             ? "#f97316"
                             : player.secondaryColor,
                         }}
-                        className={`flex items-center gap-3 rounded-md border border-l-[3px] p-2.5 text-left transition-colors cursor-pointer ${
+                        className={`flex items-start gap-3 rounded-md border border-l-[3px] p-2.5 text-left transition-colors cursor-pointer ${
                           isSelected
                             ? "border-[#f97316] bg-[#241911]"
                             : primaryResonance
@@ -739,19 +1132,31 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
                           </div>
 
                           {!blind ? (
-                            <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-                              <span className="font-mono-tabular font-semibold text-[#cfc8ba]">
-                                {player.position}
-                              </span>
-                              <span className="text-[#9c9689]">
-                                {POSITION_LABELS[player.position]}
-                              </span>
-                              {!hasExactOpenSlot && (
-                                <span className="font-mono-tabular text-[10px] text-amber-300">
-                                  (Flex)
+                            <>
+                              <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                                <span className="font-mono-tabular font-semibold text-[#cfc8ba]">
+                                  {player.position}
                                 </span>
-                              )}
-                            </div>
+                                <span className="text-[#9c9689]">
+                                  {POSITION_LABELS[player.position]}
+                                </span>
+                                {!hasExactOpenSlot && (
+                                  <span className="font-mono-tabular text-[10px] text-amber-300">
+                                    (Flex)
+                                  </span>
+                                )}
+                              </div>
+                              <p className="truncate text-[10px] italic text-[#8a8478]">
+                                {player.roleTitle}
+                              </p>
+                              <div className="font-mono-tabular flex flex-wrap gap-x-2 gap-y-0.5 text-[10px] text-[#9c9689]">
+                                <span>ATK {player.stats.attack}</span>
+                                <span>DEF {player.stats.defense}</span>
+                                <span>SRV {player.stats.serve}</span>
+                                <span>BRN {player.stats.brain}</span>
+                                <span>SPD {player.stats.speed}</span>
+                              </div>
+                            </>
                           ) : (
                             <p className="text-[11px] text-[#9c9689]">
                               Posisi & OVR tersembunyi
@@ -779,8 +1184,41 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
               </div>
             )}
 
-            {/* Compact Synergy & Score Breakdown */}
-            <div className="border-t border-white/10 pt-3">
+            {/* Live Formation Tracker + Synergy & Stat Breakdown */}
+            <div className="space-y-3 border-t border-white/10 pt-3">
+              {/* Live Formation Progress */}
+              {activeFormation && (
+                <div className="rounded-md border border-white/10 bg-[#151614] px-3 py-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <span className="font-semibold text-[#ebe5d8]">
+                      Taktik: {activeFormation.name}
+                    </span>
+                    <span
+                      className={`font-mono-tabular font-bold ${
+                        formationStatus.bonus > 0 ? "text-emerald-400" : "text-[#9c9689]"
+                      }`}
+                    >
+                      {formationStatus.bonus > 0
+                        ? `+${formationStatus.bonus.toFixed(1)} OVR Aktif`
+                        : "Belum aktif"}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
+                    {formationStatus.checks.map((chk) => (
+                      <span
+                        key={chk.label}
+                        className={`inline-flex items-center gap-1 text-[11px] ${
+                          chk.met ? "text-emerald-400" : "text-[#8a8478]"
+                        }`}
+                      >
+                        <Check className="h-3 w-3" />
+                        {chk.label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {evaluation.activeSynergies.length > 0 ? (
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
@@ -814,37 +1252,69 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
               )}
 
               {evaluation.totalOvr > 0 && (
-                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-[#9c9689]">
-                  <span>
-                    Base{" "}
-                    <strong className="font-mono-tabular text-[#ebe5d8]">
-                      {evaluation.baseOvr.toFixed(1)}
-                    </strong>
-                  </span>
-                  <span>
-                    Penalti{" "}
-                    <strong
-                      className={`font-mono-tabular ${
-                        evaluation.fitPenaltyTotal > 0
-                          ? "text-rose-400"
-                          : "text-emerald-400"
-                      }`}
-                    >
-                      -{evaluation.fitPenaltyTotal.toFixed(1)}
-                    </strong>
-                  </span>
-                  <span>
-                    Resonansi{" "}
-                    <strong className="font-mono-tabular text-[#fb923c]">
-                      +{evaluation.synergyBonus.toFixed(1)}
-                    </strong>
-                  </span>
-                  <span>
-                    Taktik{" "}
-                    <strong className="font-mono-tabular text-[#d4a24c]">
-                      +{evaluation.formationBonus.toFixed(1)}
-                    </strong>
-                  </span>
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-[#9c9689]">
+                    <span>
+                      Base{" "}
+                      <strong className="font-mono-tabular text-[#ebe5d8]">
+                        {evaluation.baseOvr.toFixed(1)}
+                      </strong>
+                    </span>
+                    <span>
+                      Penalti{" "}
+                      <strong
+                        className={`font-mono-tabular ${
+                          evaluation.fitPenaltyTotal > 0
+                            ? "text-rose-400"
+                            : "text-emerald-400"
+                        }`}
+                      >
+                        -{evaluation.fitPenaltyTotal.toFixed(1)}
+                      </strong>
+                    </span>
+                    <span>
+                      Resonansi{" "}
+                      <strong className="font-mono-tabular text-[#fb923c]">
+                        +{evaluation.synergyBonus.toFixed(1)}
+                      </strong>
+                    </span>
+                    <span>
+                      Taktik{" "}
+                      <strong className="font-mono-tabular text-[#d4a24c]">
+                        +{evaluation.formationBonus.toFixed(1)}
+                      </strong>
+                    </span>
+                    {evaluation.trainingBonus > 0 && (
+                      <span>
+                        Latihan{" "}
+                        <strong className="font-mono-tabular text-emerald-400">
+                          +{evaluation.trainingBonus.toFixed(1)}
+                        </strong>
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Team Average Stat Strip */}
+                  <div className="font-mono-tabular flex flex-wrap items-center gap-2 text-[10px] text-[#9c9689]">
+                    <span className="rounded bg-white/5 px-1.5 py-0.5">
+                      ATK <strong className="text-[#ebe5d8]">{evaluation.stats.attack}</strong>
+                    </span>
+                    <span className="rounded bg-white/5 px-1.5 py-0.5">
+                      DEF <strong className="text-[#ebe5d8]">{evaluation.stats.defense}</strong>
+                    </span>
+                    <span className="rounded bg-white/5 px-1.5 py-0.5">
+                      SRV <strong className="text-[#ebe5d8]">{evaluation.stats.serve}</strong>
+                    </span>
+                    <span className="rounded bg-white/5 px-1.5 py-0.5">
+                      BRN <strong className="text-[#ebe5d8]">{evaluation.stats.brain}</strong>
+                    </span>
+                    <span className="rounded bg-white/5 px-1.5 py-0.5">
+                      SPD <strong className="text-[#ebe5d8]">{evaluation.stats.speed}</strong>
+                    </span>
+                    {midDraftChoiceLabel && (
+                      <span className="text-emerald-400">• {midDraftChoiceLabel}</span>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -857,7 +1327,10 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
               evaluation={evaluation}
               selectedPlayer={selectedPlayer}
               blindMode={mode === "blind"}
+              swapMode={swapMode}
+              swapSourceSlot={swapSourceSlot}
               onPlaceInSlot={handlePlaceInSlot}
+              onSwapSlotClick={handleSwapSlotClick}
             />
           </div>
         </div>
@@ -870,6 +1343,24 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
   /* ------------------------------------------------------------------------ */
   if (phase === "TOURNAMENT") {
     const activeOpponent = HARUKO_BRACKET[matchIndex]!;
+    const matchupEdge = computeMatchupEdge(evaluation, activeOpponent);
+    const displayedKarasunoSets = currentMatchResult
+      ? currentMatchResult.karasunoSets
+      : liveMatch
+        ? liveMatch.karasunoSets
+        : 0;
+    const displayedOpponentSets = currentMatchResult
+      ? currentMatchResult.opponentSets
+      : liveMatch
+        ? liveMatch.opponentSets
+        : 0;
+    const displayedSets = currentMatchResult
+      ? currentMatchResult.sets
+      : liveMatch
+        ? liveMatch.sets
+        : [];
+    const canPreMatchSwap =
+      matchIndex === 0 && !liveMatch && !currentMatchResult && swapsLeft > 0;
 
     return (
       <div className="mx-auto max-w-4xl px-3.5 py-5 sm:px-5 sm:py-7">
@@ -902,6 +1393,46 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
           })}
         </div>
 
+        {/* Optional Pre-Match Final Swap before Match 1 */}
+        {canPreMatchSwap && (
+          <div className="mb-4 rounded-lg border border-[#d4a24c]/35 bg-[#171510] p-3.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="text-xs text-[#cfc8ba]">
+                <strong className="text-[#d4a24c]">Persiapan Sebelum Match 1:</strong>{" "}
+                Masih punya {swapsLeft}x hak Tukar Posisi jika ingin merapikan slot.
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  soundManager.play("click");
+                  setSwapSourceSlot(null);
+                  setSwapMode((prev) => !prev);
+                }}
+                className={`flex min-h-[34px] items-center gap-1.5 rounded-md border px-3 py-1 text-xs font-semibold transition-colors cursor-pointer ${
+                  swapMode
+                    ? "border-[#d4a24c] bg-[#d4a24c]/25 text-[#f7d894]"
+                    : "border-[#d4a24c]/45 bg-[#d4a24c]/10 text-[#d4a24c] hover:bg-[#d4a24c]/20"
+                }`}
+              >
+                <ArrowLeftRight className="h-3.5 w-3.5" />
+                {swapMode ? "Tutup Mode Tukar" : "Atur Lineup"}
+              </button>
+            </div>
+            {swapMode && (
+              <div className="mt-3">
+                <VolleyballCourt
+                  lineup={lineup}
+                  evaluation={evaluation}
+                  selectedPlayer={null}
+                  swapMode={true}
+                  swapSourceSlot={swapSourceSlot}
+                  onSwapSlotClick={handleSwapSlotClick}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Flip Scoreboard */}
         <div className="rounded-lg border border-white/15 bg-[#151614] p-5 sm:p-6">
           <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-white/10 pb-3">
@@ -911,74 +1442,158 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
               </h2>
               <p className="text-xs text-[#9c9689]">{activeOpponent.subtitle}</p>
             </div>
-            <span className="font-mono-tabular text-xs font-semibold text-[#d4a24c]">
-              Best of {activeOpponent.bestOf}
-            </span>
-          </div>
-
-          {/* Physical Flip-Tile Scoreboard */}
-          <div className="my-5 grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-6">
-            <div className="text-center">
-              <p className="text-xs font-bold tracking-wider text-[#f97316]">
-                KARASUNO
-              </p>
-              <div className="relative mx-auto mt-2 flex h-20 w-20 items-center justify-center rounded-md border border-white/15 bg-[#0e0f0e] shadow-inner sm:h-24 sm:w-24">
-                <div className="pointer-events-none absolute inset-x-0 top-1/2 h-px bg-black/70" />
-                <span className="font-mono-tabular text-4xl font-extrabold text-[#ebe5d8] sm:text-5xl">
-                  {currentMatchResult ? currentMatchResult.karasunoSets : "0"}
-                </span>
-              </div>
-              <p className="font-mono-tabular mt-2 text-xs text-[#9c9689]">
-                OVR {evaluation.totalOvr.toFixed(1)}
-              </p>
-            </div>
-
-            <div className="font-mono-tabular text-lg font-bold text-[#6b665d]">
-              :
-            </div>
-
-            <div className="text-center">
-              <p
-                className="text-xs font-bold tracking-wider"
-                style={{
-                  color:
-                    activeOpponent.secondaryColor === "#18181b"
-                      ? "#f87171"
-                      : activeOpponent.secondaryColor,
-                }}
-              >
-                {activeOpponent.shortName}
-              </p>
-              <div className="relative mx-auto mt-2 flex h-20 w-20 items-center justify-center rounded-md border border-white/15 bg-[#0e0f0e] shadow-inner sm:h-24 sm:w-24">
-                <div className="pointer-events-none absolute inset-x-0 top-1/2 h-px bg-black/70" />
-                <span className="font-mono-tabular text-4xl font-extrabold text-[#ebe5d8] sm:text-5xl">
-                  {currentMatchResult ? currentMatchResult.opponentSets : "0"}
-                </span>
-              </div>
-              <p className="font-mono-tabular mt-2 text-xs text-[#9c9689]">
-                OVR {activeOpponent.ovr.toFixed(1)}
-              </p>
+            <div className="flex items-center gap-2">
+              <span className="font-mono-tabular rounded bg-white/6 px-2 py-0.5 text-[11px] font-semibold text-[#cfc8ba]">
+                {activeOpponent.playstyleTag}
+              </span>
+              <span className="font-mono-tabular text-xs font-semibold text-[#d4a24c]">
+                Best of {activeOpponent.bestOf}
+              </span>
             </div>
           </div>
 
-          {currentMatchResult ? (
-            <m.div
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-3 border-t border-white/10 pt-4"
-            >
-              <p
-                className={`text-sm font-semibold ${
-                  currentMatchResult.won ? "text-emerald-400" : "text-rose-400"
+          {/* Physical Flip-Tile Scoreboard + Rival Head-to-Head */}
+          {(() => {
+            const karasunoAce = [...Object.values(lineup)]
+              .filter((p): p is HaikyuuPlayer => Boolean(p))
+              .sort((a, b) => b.ovr - a.ovr)[0];
+
+            return (
+              <div className="my-5 grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:gap-6">
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    {karasunoAce && (
+                      <JerseyAvatar
+                        number={karasunoAce.number}
+                        primaryColor={karasunoAce.primaryColor}
+                        secondaryColor={karasunoAce.secondaryColor}
+                        position={karasunoAce.position}
+                        tier={karasunoAce.tier}
+                        size="sm"
+                      />
+                    )}
+                    <div className="text-left">
+                      <p className="text-xs font-bold tracking-wider text-[#f97316]">
+                        KARASUNO
+                      </p>
+                      {karasunoAce && (
+                        <p className="max-w-[110px] truncate text-[11px] text-[#9c9689]">
+                          {karasunoAce.name.split(" ").slice(-1)[0]}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="relative mx-auto mt-2.5 flex h-20 w-20 items-center justify-center overflow-hidden rounded-md border border-white/15 bg-[#0e0f0e] shadow-inner sm:h-24 sm:w-24">
+                    <div className="pointer-events-none absolute inset-x-0 top-1/2 z-10 h-px bg-black/70" />
+                    <m.span
+                      key={`k-${matchIndex}-${displayedKarasunoSets}`}
+                      initial={{ y: -14, opacity: 0.35, scale: 0.9 }}
+                      animate={{ y: 0, opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.24, ease: "easeOut" }}
+                      className="font-mono-tabular text-4xl font-extrabold text-[#ebe5d8] sm:text-5xl"
+                    >
+                      {displayedKarasunoSets}
+                    </m.span>
+                  </div>
+                  <p className="font-mono-tabular mt-2 text-xs text-[#9c9689]">
+                    OVR {evaluation.totalOvr.toFixed(1)}
+                  </p>
+                </div>
+
+                <div className="font-mono-tabular text-lg font-bold text-[#6b665d]">
+                  :
+                </div>
+
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="text-right">
+                      <p
+                        className="text-xs font-bold tracking-wider"
+                        style={{
+                          color:
+                            activeOpponent.secondaryColor === "#18181b"
+                              ? "#f87171"
+                              : activeOpponent.secondaryColor,
+                        }}
+                      >
+                        {activeOpponent.shortName}
+                      </p>
+                      <p className="max-w-[110px] truncate text-[11px] text-[#9c9689]">
+                        {activeOpponent.starPlayer}
+                      </p>
+                    </div>
+                    <JerseyAvatar
+                      number={activeOpponent.starNumber}
+                      primaryColor={activeOpponent.primaryColor}
+                      secondaryColor={activeOpponent.secondaryColor}
+                      position={activeOpponent.starPosition}
+                      tier="SSR"
+                      size="sm"
+                    />
+                  </div>
+                  <div className="relative mx-auto mt-2.5 flex h-20 w-20 items-center justify-center overflow-hidden rounded-md border border-white/15 bg-[#0e0f0e] shadow-inner sm:h-24 sm:w-24">
+                    <div className="pointer-events-none absolute inset-x-0 top-1/2 z-10 h-px bg-black/70" />
+                    <m.span
+                      key={`o-${matchIndex}-${displayedOpponentSets}`}
+                      initial={{ y: -14, opacity: 0.35, scale: 0.9 }}
+                      animate={{ y: 0, opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.24, ease: "easeOut" }}
+                      className="font-mono-tabular text-4xl font-extrabold text-[#ebe5d8] sm:text-5xl"
+                    >
+                      {displayedOpponentSets}
+                    </m.span>
+                  </div>
+                  <p className="font-mono-tabular mt-2 text-xs text-[#9c9689]">
+                    OVR {activeOpponent.ovr.toFixed(1)}
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Matchup Scouting Bar */}
+          <div className="mb-4 rounded-md border border-white/10 bg-[#111210] px-3.5 py-2.5 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-[#9c9689]">
+                Bintang lawan:{" "}
+                <strong className="text-[#ebe5d8]">{activeOpponent.starPlayer}</strong>
+              </span>
+              <span
+                className={`font-mono-tabular font-bold ${
+                  matchupEdge.deltaOvr >= 0.4
+                    ? "text-emerald-400"
+                    : matchupEdge.deltaOvr <= -0.4
+                      ? "text-rose-400"
+                      : "text-[#d4a24c]"
                 }`}
               >
-                {currentMatchResult.won
-                  ? `Menang ${currentMatchResult.karasunoSets}-${currentMatchResult.opponentSets} • MVP: ${currentMatchResult.mvpName}`
-                  : `Kalah ${currentMatchResult.karasunoSets}-${currentMatchResult.opponentSets} dari ${activeOpponent.schoolName}`}
-              </p>
+                {matchupEdge.advantageLabel} (
+                {matchupEdge.deltaOvr >= 0 ? "+" : ""}
+                {matchupEdge.deltaOvr.toFixed(1)} OVR)
+              </span>
+            </div>
+            <p className="mt-1 text-[11px] text-[#8a8478]">
+              {activeOpponent.tacticalHint} • {matchupEdge.detail}
+            </p>
+          </div>
+
+          {/* Played Sets Ledger (Live or Final) */}
+          {displayedSets.length > 0 && (
+            <div className="space-y-3 border-t border-white/10 pt-4">
+              {currentMatchResult && (
+                <p
+                  className={`text-sm font-semibold ${
+                    currentMatchResult.won ? "text-emerald-400" : "text-rose-400"
+                  }`}
+                >
+                  {currentMatchResult.won
+                    ? `Menang ${currentMatchResult.karasunoSets}-${currentMatchResult.opponentSets} • MVP: ${currentMatchResult.mvpName}`
+                    : `Kalah ${currentMatchResult.karasunoSets}-${currentMatchResult.opponentSets} dari ${activeOpponent.schoolName}`}
+                </p>
+              )}
 
               <div className="divide-y divide-white/8 border border-white/10 bg-[#111210]">
-                {currentMatchResult.sets.map((s) => {
+                {displayedSets.map((s) => {
                   const kWon = s.karasuno > s.opponent;
                   return (
                     <div
@@ -996,23 +1611,70 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
                         >
                           {s.karasuno} - {s.opponent}
                         </span>
+                        {s.coachCallUsed && (
+                          <span className="rounded bg-[#d4a24c]/15 px-1.5 py-0.5 text-[10px] font-semibold text-[#d4a24c]">
+                            TIMEOUT
+                          </span>
+                        )}
                       </div>
                       <p className="text-xs text-[#cfc8ba]">{s.highlight}</p>
                     </div>
                   );
                 })}
               </div>
-            </m.div>
-          ) : (
-            <div className="border-t border-white/10 pt-4 text-xs text-[#9c9689]">
-              Pemain kunci lawan:{" "}
-              <span className="font-semibold text-[#ebe5d8]">
-                {activeOpponent.starPlayer}
-              </span>
-              .{" "}
-              {evaluation.totalOvr >= activeOpponent.ovr
-                ? "Karasuno unggul tipis di atas kertas."
-                : "Lawan lebih berat — andalkan resonansi dan reli panjang."}
+            </div>
+          )}
+
+          {/* Coach Timeout Selector before upcoming set */}
+          {!currentMatchResult && coachTimeoutsLeft > 0 && (
+            <div className="mt-4 rounded-md border border-white/10 bg-[#111210] p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#d4a24c]">
+                  <Zap className="h-3.5 w-3.5 text-[#f97316]" />
+                  Instruksi Timeout Pelatih (Sisa {coachTimeoutsLeft}x Turnamen)
+                </span>
+                {pendingCoachCall && (
+                  <button
+                    type="button"
+                    onClick={() => setPendingCoachCall(null)}
+                    className="text-[11px] text-[#9c9689] hover:text-[#ebe5d8] cursor-pointer"
+                  >
+                    Batalkan pilihan
+                  </button>
+                )}
+              </div>
+              <div className="mt-2.5 grid gap-2 sm:grid-cols-3">
+                {COACH_TIMEOUT_OPTIONS.map((opt) => {
+                  const active = pendingCoachCall === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => {
+                        soundManager.play("click");
+                        setPendingCoachCall(active ? null : opt.id);
+                      }}
+                      className={`rounded-md border p-2 text-left transition-colors cursor-pointer ${
+                        active
+                          ? "border-[#f97316] bg-[#241911]"
+                          : "border-white/10 bg-[#151614] hover:border-white/25"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-[11px] font-semibold text-[#ebe5d8]">
+                          {opt.name}
+                        </span>
+                        <span className="font-mono-tabular text-[10px] font-bold text-[#fb923c]">
+                          {opt.shortTag}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-[10px] leading-snug text-[#9c9689]">
+                        {opt.description}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
 
@@ -1029,10 +1691,12 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
                 </button>
                 <button
                   type="button"
-                  onClick={playCurrentMatch}
+                  onClick={playCurrentMatchSet}
                   className="min-h-[44px] flex-1 rounded-md bg-[#f97316] px-6 py-2.5 text-sm font-bold text-[#111210] hover:bg-[#fb923c] transition-colors cursor-pointer sm:flex-initial"
                 >
-                  Mainkan Babak Ini
+                  {liveMatch
+                    ? `Mainkan Set ${liveMatch.sets.length + 1}${pendingCoachCall ? " (+Timeout)" : ""}`
+                    : `Mulai Pertandingan (Set 1)${pendingCoachCall ? " (+Timeout)" : ""}`}
                 </button>
               </>
             ) : (
@@ -1136,10 +1800,34 @@ export function KarasunoHarukoBoard({ onExit }: KarasunoHarukoBoardProps) {
             <span className="font-mono-tabular font-semibold">
               Verified Run: {verificationCode}
             </span>
+            {runType === "daily" && (
+              <span className="rounded bg-[#d4a24c]/15 px-1.5 py-0.5 text-[10px] font-bold text-[#d4a24c]">
+                DAILY {dailyKey}
+              </span>
+            )}
             <span className="text-[#9c9689]">
               • {formatRunTimestamp(completedAt)}
             </span>
           </div>
+
+          {newlyUnlockedBadges.length > 0 && (
+            <div className="mt-4 rounded-md border border-[#d4a24c]/45 bg-[#1b170f] px-3.5 py-2.5">
+              <p className="text-[11px] font-bold tracking-wider text-[#d4a24c]">
+                LENCANA BARU TERBUKA!
+              </p>
+              <div className="mt-1.5 flex flex-wrap gap-2">
+                {newlyUnlockedBadges.map((b) => (
+                  <span
+                    key={b.id}
+                    className="inline-flex items-center gap-1.5 rounded border border-[#d4a24c]/35 bg-black/25 px-2.5 py-1 text-xs font-semibold text-[#ebe5d8]"
+                  >
+                    <Award className="h-3.5 w-3.5 text-[#d4a24c]" />
+                    {b.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="mt-4 flex flex-wrap items-center gap-2.5">
             <a

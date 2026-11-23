@@ -3,13 +3,21 @@ import {
   COURT_SLOTS,
   HAIKYUU_PLAYER_BY_ID,
   HAIKYUU_PLAYERS,
+  HAIKYUU_SYNERGY_CATALOG,
   HARUKO_BRACKET,
   SCHOOL_PACKS,
+  computeMatchupEdge,
+  createLiveMatchState,
+  createSeededRng as sharedSeededRng,
   drawPackCandidates,
   evaluateTeam,
+  finalizeLiveMatch,
+  getDailyChallengeKey,
+  getFormationStatus,
   getPlayersForSchoolPack,
   getPositionFit,
   getPotentialResonances,
+  playNextMatchSet,
   rollSchoolPack,
   simulateFullTournament,
   simulateHarukoMatch,
@@ -179,5 +187,71 @@ describe("Haikyuu Haruko Draft Engine", () => {
       expect(fullRun.matches).toHaveLength(HARUKO_BRACKET.length);
       expect(fullRun.matchesWon).toBe(HARUKO_BRACKET.length);
     }
+  });
+
+  it("tracks formation status, training bonus, tactical matchups, and set-by-set live matches", () => {
+    const lineup: LineupMap = {
+      S: HAIKYUU_PLAYER_BY_ID.get("kageyama")!,
+      MB1: HAIKYUU_PLAYER_BY_ID.get("hinata")!,
+      MB2: HAIKYUU_PLAYER_BY_ID.get("hirugami")!,
+      OH1: HAIKYUU_PLAYER_BY_ID.get("sakusa")!,
+      OH2: HAIKYUU_PLAYER_BY_ID.get("hoshiumi")!,
+      OP: HAIKYUU_PLAYER_BY_ID.get("ushijima")!,
+      L: HAIKYUU_PLAYER_BY_ID.get("komori")!,
+    };
+
+    const evalNoBonus = evaluateTeam(lineup, "run-gun", 0);
+    const evalWithTraining = evaluateTeam(lineup, "run-gun", 1.0);
+    expect(evalWithTraining.trainingBonus).toBe(1.0);
+    expect(evalWithTraining.totalOvr).toBeGreaterThanOrEqual(evalNoBonus.totalOvr);
+
+    const fStatus = getFormationStatus(
+      lineup,
+      "run-gun",
+      evalNoBonus.stats.defense,
+      evalNoBonus.activeSynergies.length
+    );
+    expect(fStatus.satisfied).toBe(true);
+    expect(fStatus.bonus).toBe(1.8);
+    expect(fStatus.checks.every((c) => c.met)).toBe(true);
+
+    const edge = computeMatchupEdge(evalNoBonus, HARUKO_BRACKET[7]!); // Kamomedai
+    expect(edge.deltaOvr).toBeGreaterThanOrEqual(-1.4);
+    expect(edge.deltaOvr).toBeLessThanOrEqual(1.6);
+
+    const rng = createSeededRng(2026);
+    let live = createLiveMatchState(evalNoBonus, lineup, HARUKO_BRACKET[3]!, rng); // Best of 5
+    expect(live.finished).toBe(false);
+    live = playNextMatchSet(live, "target-serve", rng);
+    expect(live.sets).toHaveLength(1);
+    expect(live.sets[0]!.coachCallUsed).toBe("target-serve");
+
+    while (!live.finished) {
+      live = playNextMatchSet(live, undefined, rng);
+    }
+    const finalRes = finalizeLiveMatch(live);
+    expect(Math.max(finalRes.karasunoSets, finalRes.opponentSets)).toBe(3);
+
+    // Synergy catalog coverage
+    const catalogIds = new Set(HAIKYUU_SYNERGY_CATALOG.map((c) => c.id));
+    for (const syn of evalNoBonus.activeSynergies) {
+      expect(catalogIds.has(syn.id)).toBe(true);
+    }
+  });
+
+  it("produces deterministic sequences with shared seeded RNG and valid daily keys", () => {
+    const key = getDailyChallengeKey(new Date(2026, 10, 23));
+    expect(key).toBe("2026-11-23");
+
+    const rngA = sharedSeededRng(`haruko-daily-draft:${key}`);
+    const rngB = sharedSeededRng(`haruko-daily-draft:${key}`);
+
+    const packA = rollSchoolPack(new Set(), new Set(), rngA);
+    const packB = rollSchoolPack(new Set(), new Set(), rngB);
+    expect(packA.id).toBe(packB.id);
+
+    const candA = drawPackCandidates(packA.id, new Set(), 3, rngA).map((p) => p.id);
+    const candB = drawPackCandidates(packB.id, new Set(), 3, rngB).map((p) => p.id);
+    expect(candA).toEqual(candB);
   });
 });

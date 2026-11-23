@@ -6,7 +6,10 @@ export type SoundEffect =
   | "taunt"
   | "reveal"
   | "wrong"
-  | "win";
+  | "win"
+  | "whistle"
+  | "spike"
+  | "cheer";
 
 class SoundManager {
   private muted = false;
@@ -184,6 +187,78 @@ class SoundManager {
         osc.connect(gain).connect(ctx.destination);
         osc.start(now + offset);
         osc.stop(now + offset + 0.23);
+      });
+      return;
+    }
+
+    if (effect === "whistle") {
+      const osc = ctx.createOscillator();
+      const lfo = ctx.createOscillator();
+      const lfoGain = ctx.createGain();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(2650, now);
+      osc.frequency.setValueAtTime(2780, now + 0.08);
+      lfo.type = "sine";
+      lfo.frequency.setValueAtTime(38, now);
+      lfoGain.gain.setValueAtTime(110, now);
+      lfo.connect(lfoGain).connect(osc.frequency);
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(0.14, now + 0.02);
+      gain.gain.setValueAtTime(0.14, now + 0.16);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now);
+      lfo.start(now);
+      osc.stop(now + 0.26);
+      lfo.stop(now + 0.26);
+      return;
+    }
+
+    if (effect === "spike") {
+      const osc = ctx.createOscillator();
+      const oscGain = ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(260, now);
+      osc.frequency.exponentialRampToValueAtTime(58, now + 0.11);
+      oscGain.gain.setValueAtTime(0.32, now);
+      oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+      osc.connect(oscGain).connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.13);
+
+      const bufferSize = Math.floor(ctx.sampleRate * 0.09);
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.025));
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+      const filter = ctx.createBiquadFilter();
+      filter.type = "bandpass";
+      filter.frequency.setValueAtTime(1600, now);
+      const nGain = ctx.createGain();
+      nGain.gain.setValueAtTime(0.28, now);
+      nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+      noise.connect(filter).connect(nGain).connect(ctx.destination);
+      noise.start(now);
+      return;
+    }
+
+    if (effect === "cheer") {
+      const chord = [440, 554.37, 659.25, 880];
+      chord.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(freq, now + idx * 0.04);
+        gain.gain.setValueAtTime(0.001, now + idx * 0.04);
+        gain.gain.linearRampToValueAtTime(0.11, now + idx * 0.04 + 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(now + idx * 0.04);
+        osc.stop(now + 0.58);
       });
     }
   }

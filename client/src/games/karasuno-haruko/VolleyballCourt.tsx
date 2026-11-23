@@ -17,11 +17,24 @@ interface VolleyballCourtProps {
   selectedPlayer: HaikyuuPlayer | null;
   blindMode?: boolean;
   interactive?: boolean;
+  swapMode?: boolean;
+  swapSourceSlot?: CourtSlotId | null;
   onPlaceInSlot?: (slotId: CourtSlotId) => void;
+  onSwapSlotClick?: (slotId: CourtSlotId) => void;
 }
 
 const FRONT_ROW: CourtSlotId[] = ["OH1", "MB1", "OP"];
 const BACK_ROW: CourtSlotId[] = ["OH2", "MB2", "S"];
+
+const SLOT_COORDS: Record<CourtSlotId, { x: number; y: number }> = {
+  OH1: { x: 18, y: 18 },
+  MB1: { x: 50, y: 18 },
+  OP: { x: 82, y: 18 },
+  OH2: { x: 18, y: 51 },
+  MB2: { x: 50, y: 51 },
+  S: { x: 82, y: 51 },
+  L: { x: 82, y: 84 },
+};
 
 function getSlotMeta(id: CourtSlotId): CourtSlotMeta {
   return COURT_SLOTS.find((s) => s.id === id)!;
@@ -33,17 +46,46 @@ export function VolleyballCourt({
   selectedPlayer,
   blindMode = false,
   interactive = true,
+  swapMode = false,
+  swapSourceSlot = null,
   onPlaceInSlot,
+  onSwapSlotClick,
 }: VolleyballCourtProps) {
   const synergyPlayerIds = new Set(
     evaluation.activeSynergies.flatMap((s) => s.involvedPlayerIds)
   );
 
+  const playerSlotById = new Map<string, CourtSlotId>();
+  for (const slot of COURT_SLOTS) {
+    const p = lineup[slot.id];
+    if (p) playerSlotById.set(p.id, slot.id);
+  }
+
+  const synergyEdges: { key: string; from: CourtSlotId; to: CourtSlotId }[] = [];
+  const seenPairs = new Set<string>();
+  for (const syn of evaluation.activeSynergies) {
+    const slots = syn.involvedPlayerIds
+      .map((pid) => playerSlotById.get(pid))
+      .filter((s): s is CourtSlotId => Boolean(s));
+    for (let i = 0; i < slots.length - 1; i++) {
+      const a = slots[i]!;
+      const b = slots[i + 1]!;
+      const pairKey = [a, b].sort().join("-");
+      if (!seenPairs.has(pairKey)) {
+        seenPairs.add(pairKey);
+        synergyEdges.push({ key: pairKey, from: a, to: b });
+      }
+    }
+  }
+
   const renderSlot = (slotId: CourtSlotId) => {
     const meta = getSlotMeta(slotId);
     const player = lineup[slotId];
     const slotScore = evaluation.slotScores[slotId];
-    const canPlace = interactive && Boolean(selectedPlayer) && !player;
+    const canPlace = interactive && !swapMode && Boolean(selectedPlayer) && !player;
+    const canSwap = interactive && swapMode && Boolean(player);
+    const isSwapSource = swapMode && swapSourceSlot === slotId;
+    const isActionable = canPlace || canSwap;
     const previewFit =
       canPlace && selectedPlayer ? getPositionFit(selectedPlayer, slotId) : null;
     const hasSynergy = player ? synergyPlayerIds.has(player.id) : false;
@@ -59,16 +101,26 @@ export function VolleyballCourt({
       <button
         key={slotId}
         type="button"
-        disabled={!canPlace}
-        onClick={() => canPlace && onPlaceInSlot?.(slotId)}
+        disabled={!isActionable}
+        onClick={() => {
+          if (canSwap) {
+            onSwapSlotClick?.(slotId);
+          } else if (canPlace) {
+            onPlaceInSlot?.(slotId);
+          }
+        }}
         className={`relative flex w-full min-h-[104px] flex-col items-center justify-between rounded-md border p-2 text-center transition-all sm:min-h-[114px] ${
-          player
-            ? hasSynergy
-              ? "border-[#f97316] bg-[#161513]/95 shadow-[inset_0_0_0_1px_rgba(249,115,22,0.35)]"
-              : "border-white/20 bg-[#141513]/92"
-            : canPlace
-              ? "cursor-pointer border-white/80 bg-[#f97316]/20 hover:bg-[#f97316]/32"
-              : "border-dashed border-white/25 bg-black/25"
+          isSwapSource
+            ? "cursor-pointer border-[#d4a24c] bg-[#2a2010] ring-2 ring-[#d4a24c]"
+            : canSwap
+              ? "cursor-pointer border-[#d4a24c]/60 bg-[#1a1813] hover:border-[#d4a24c] hover:bg-[#252116]"
+              : player
+                ? hasSynergy
+                  ? "border-[#f97316] bg-[#161513]/95 shadow-[inset_0_0_0_1px_rgba(249,115,22,0.35)]"
+                  : "border-white/20 bg-[#141513]/92"
+                : canPlace
+                  ? "cursor-pointer border-white/80 bg-[#f97316]/20 hover:bg-[#f97316]/32"
+                  : "border-dashed border-white/25 bg-black/25"
         }`}
       >
         <div className="flex w-full items-center justify-between gap-1 text-[10px]">
@@ -156,27 +208,61 @@ export function VolleyballCourt({
         <div className="h-2 flex-1 rounded-xs border-y border-white/40 bg-[repeating-linear-gradient(90deg,rgba(255,255,255,0.22)_0px,rgba(255,255,255,0.22)_2px,transparent_2px,transparent_8px)]" />
       </div>
 
-      {/* Orange Court Surface */}
-      <div className="border-2 border-white/65 bg-[#633219] p-2.5 sm:p-3">
-        {/* Front Row (Attack Zone) */}
-        <div className="grid grid-cols-3 gap-2">{FRONT_ROW.map(renderSlot)}</div>
+      {/* Court + Libero Zone with Synergy Link Overlay */}
+      <div className="relative">
+        {synergyEdges.length > 0 && (
+          <svg
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            className="pointer-events-none absolute inset-0 z-10 h-full w-full"
+            aria-hidden="true"
+          >
+            {synergyEdges.map((edge) => {
+              const p1 = SLOT_COORDS[edge.from];
+              const p2 = SLOT_COORDS[edge.to];
+              return (
+                <line
+                  key={edge.key}
+                  x1={p1.x}
+                  y1={p1.y}
+                  x2={p2.x}
+                  y2={p2.y}
+                  stroke="#fb923c"
+                  strokeWidth="0.7"
+                  strokeOpacity="0.6"
+                  strokeDasharray="2 1.4"
+                />
+              );
+            })}
+          </svg>
+        )}
 
-        {/* 3m Attack Line */}
-        <div className="my-2.5 border-t-2 border-white/65" />
+        {/* Orange Court Surface */}
+        <div className="relative border-2 border-white/65 bg-[#633219] p-2.5 sm:p-3">
+          {/* Front Row (Attack Zone) */}
+          <div className="relative z-10 grid grid-cols-3 gap-2">
+            {FRONT_ROW.map(renderSlot)}
+          </div>
 
-        {/* Back Row */}
-        <div className="grid grid-cols-3 gap-2">{BACK_ROW.map(renderSlot)}</div>
-      </div>
+          {/* 3m Attack Line */}
+          <div className="my-2.5 border-t-2 border-white/65" />
 
-      {/* Libero Zone — aligned 1:1 with the 3-column court grid */}
-      <div className="mt-2.5 grid grid-cols-3 items-center gap-2 border-t border-white/10 px-2.5 pt-2.5 sm:px-3">
-        <div className="col-span-2 pr-2 text-left">
-          <p className="text-xs font-semibold text-[#ebe5d8]">Zona Libero</p>
-          <p className="text-[11px] leading-snug text-[#9c9689]">
-            Spesialis pertahanan lantai &amp; receive
-          </p>
+          {/* Back Row */}
+          <div className="relative z-10 grid grid-cols-3 gap-2">
+            {BACK_ROW.map(renderSlot)}
+          </div>
         </div>
-        {renderSlot("L")}
+
+        {/* Libero Zone — aligned 1:1 with the 3-column court grid */}
+        <div className="relative z-10 mt-2.5 grid grid-cols-3 items-center gap-2 border-t border-white/10 px-2.5 pt-2.5 sm:px-3">
+          <div className="col-span-2 pr-2 text-left">
+            <p className="text-xs font-semibold text-[#ebe5d8]">Zona Libero</p>
+            <p className="text-[11px] leading-snug text-[#9c9689]">
+              Spesialis pertahanan lantai &amp; receive
+            </p>
+          </div>
+          {renderSlot("L")}
+        </div>
       </div>
     </div>
   );

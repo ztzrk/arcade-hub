@@ -16,6 +16,7 @@ export interface ShareRunParams {
   evaluation: TeamEvaluation;
   matchHistory: TournamentMatchResult[];
   completedAt: Date;
+  dailyKey?: string | null;
 }
 
 function fnv1aHash(input: string): number {
@@ -40,12 +41,13 @@ export function buildVerificationCode(params: ShareRunParams): string {
     )
     .join("|");
 
-  const payload = `${params.mode}|${params.formationId}|${params.evaluation.totalOvr.toFixed(1)}|${lineupSig}|${matchSig}|${params.completedAt.getTime()}`;
+  const payload = `${params.mode}|${params.dailyKey ?? "free"}|${params.formationId}|${params.evaluation.totalOvr.toFixed(1)}|${lineupSig}|${matchSig}|${params.completedAt.getTime()}`;
   const digest = fnv1aHash(payload).toString(36).toUpperCase().padStart(6, "0");
   const ovrTag = Math.round(params.evaluation.totalOvr * 10);
   const wins = params.matchHistory.filter((m) => m.won).length;
   const losses = params.matchHistory.filter((m) => !m.won).length;
-  return `HK-${ovrTag}-${wins}W${losses}L-${digest.slice(0, 5)}`;
+  const prefix = params.dailyKey ? "HKD" : "HK";
+  return `${prefix}-${ovrTag}-${wins}W${losses}L-${digest.slice(0, 5)}`;
 }
 
 export function formatRunTimestamp(date: Date): string {
@@ -62,7 +64,7 @@ export function buildWhatsAppShareText(
   params: ShareRunParams,
   verificationCode: string
 ): string {
-  const { mode, formationId, lineup, evaluation, matchHistory, completedAt } =
+  const { mode, formationId, lineup, evaluation, matchHistory, completedAt, dailyKey } =
     params;
 
   const formation =
@@ -115,7 +117,7 @@ export function buildWhatsAppShareText(
       : "";
 
   return [
-    `*KARASUNO: ROAD TO HARUKO*`,
+    dailyKey ? `*KARASUNO: DAILY HARUKO (${dailyKey})*` : `*KARASUNO: ROAD TO HARUKO*`,
     verdictLine,
     `${bracketBar}  (${wins}-${losses} Match | ${setsWon}-${setsLost} Set)`,
     `OVR Tim: *${evaluation.totalOvr.toFixed(1)}* • ${formation} (${mode === "blind" ? "Blind" : "Klasik"})`,
@@ -157,7 +159,7 @@ export function downloadVerifiedResultCard(
   params: ShareRunParams,
   verificationCode: string
 ): void {
-  const { mode, formationId, lineup, evaluation, matchHistory, completedAt } =
+  const { mode, formationId, lineup, evaluation, matchHistory, completedAt, dailyKey } =
     params;
 
   const canvas = document.createElement("canvas");
@@ -192,9 +194,15 @@ export function downloadVerifiedResultCard(
   ctx.strokeRect(36, 36, canvas.width - 72, canvas.height - 72);
 
   // Header
-  ctx.fillStyle = "#9c9689";
+  ctx.fillStyle = params.dailyKey ? "#d4a24c" : "#9c9689";
   ctx.font = "600 18px 'DM Sans', system-ui, sans-serif";
-  ctx.fillText("KARASUNO HARUKO DRAFT • OFFICIAL MATCHDAY RECORD", 68, 86);
+  ctx.fillText(
+    params.dailyKey
+      ? `KARASUNO HARUKO DRAFT • DAILY CHALLENGE (${params.dailyKey})`
+      : "KARASUNO HARUKO DRAFT • OFFICIAL MATCHDAY RECORD",
+    68,
+    86
+  );
 
   ctx.fillStyle = "#ebe5d8";
   ctx.font = "700 44px 'Fraunces', Georgia, serif";

@@ -1481,13 +1481,66 @@ export interface ActiveSynergy {
   involvedPlayerIds: string[];
 }
 
+export interface SynergyCatalogEntry {
+  id: string;
+  name: string;
+  hint: string;
+  category: "DUO" | "SEKOLAH" | "SPESIAL";
+}
+
+export const HAIKYUU_SYNERGY_CATALOG: readonly SynergyCatalogEntry[] = [
+  { id: "freak-quick", name: "Serangan Cepat Eksentrik", hint: "Pasangkan Hinata & Kageyama", category: "DUO" },
+  { id: "miya-twins", name: "Kembar Miya", hint: "Pasangkan Atsumu & Osamu Miya", category: "DUO" },
+  { id: "atsumu-hinata", name: "Umpan Sang Penantang", hint: "Pasangkan Hinata & Atsumu Miya", category: "DUO" },
+  { id: "garbage-dump-brains", name: "Otak & Gagak Terbang", hint: "Pasangkan Hinata & Kenma Kozume", category: "DUO" },
+  { id: "seijoh-duo", name: "Kepercayaan 6 Tahun", hint: "Pasangkan Oikawa & Iwaizumi", category: "DUO" },
+  { id: "owl-and-setter", name: "Burung Hantu & Penjinaknya", hint: "Pasangkan Bokuto & Akaashi", category: "DUO" },
+  { id: "itachiyama-champs", name: "Pilar Juara Itachiyama", hint: "Pasangkan Sakusa & Komori", category: "DUO" },
+  { id: "kamomedai-wings", name: "Sayap & Tembok Kamomedai", hint: "Pasangkan Hoshiumi & Hirugami", category: "DUO" },
+  { id: "shiratori-duo", name: "Meriam & Monster Tebakan", hint: "Pasangkan Ushijima & Tendou", category: "DUO" },
+  { id: "iron-wall", name: "Tembok Besi Date Tech", hint: "Pasangkan Aone & Futakuchi", category: "DUO" },
+  { id: "mentor-block", name: "Guru & Murid Read Block", hint: "Pasangkan Kuroo & Tsukishima", category: "DUO" },
+  { id: "guardian-and-ace", name: "Dewa Penjaga & Sang Ace", hint: "Pasangkan Nishinoya & Asahi", category: "DUO" },
+  { id: "kitagawa-rivals", name: "Rival Kitagawa Daiichi", hint: "Pasangkan Oikawa & Kageyama", category: "DUO" },
+  { id: "miyagi-dream", name: "Andai Kau di Shiratorizawa", hint: "Pasangkan Oikawa & Ushijima", category: "DUO" },
+  { id: "nekoma-spine", name: "Otak & Jantung Nekoma", hint: "Pasangkan Kuroo & Kenma", category: "DUO" },
+  { id: "yaku-lev", name: "Mentor Libero & Menara", hint: "Pasangkan Yaku & Lev Haiba", category: "DUO" },
+  { id: "owl-disciple", name: "Murid #1 Burung Hantu", hint: "Pasangkan Bokuto & Hinata", category: "DUO" },
+  { id: "tokyo-captains", name: "Kucing & Burung Hantu", hint: "Pasangkan Kuroo & Bokuto", category: "DUO" },
+  { id: "tokyo-brains", name: "Duo Otak Tokyo", hint: "Pasangkan Akaashi & Kenma", category: "DUO" },
+  { id: "inarizaki-middle", name: "Core Turn Inarizaki", hint: "Pasangkan Atsumu & Suna Rintaro", category: "DUO" },
+  { id: "karasuno-hype", name: "Api Semangat Karasuno", hint: "Pasangkan Tanaka & Nishinoya", category: "DUO" },
+  { id: "precision-and-wall", name: "Presisi & Read Block", hint: "Pasangkan Kageyama & Tsukishima", category: "DUO" },
+  { id: "kita-discipline", name: "Disiplin Kapten Kita", hint: "Kita Shinsuke + minimal 1 pemain Inarizaki", category: "SEKOLAH" },
+  { id: "karasuno-seniors", name: "Pilar Tahun Ketiga", hint: "2+ dari Daichi, Sugawara, atau Asahi", category: "SEKOLAH" },
+  { id: "karasuno-spirit", name: "Jiwa Gagak Karasuno", hint: "2+ pemain Karasuno dalam satu tim", category: "SEKOLAH" },
+  { id: "all-japan-youth", name: "Kamp Timnas U-19", hint: "2+ anggota Kamp Timnas (Kageyama, Atsumu, Sakusa, Komori, Hoshiumi, Chigaya)", category: "SPESIAL" },
+  { id: "little-giants", name: "Duel Raksasa Kecil", hint: "2+ pemain bertag Raksasa Kecil (Hinata, Hoshiumi, Nakashima)", category: "SPESIAL" },
+  { id: "national-block-wall", name: "Benteng Blok Nasional", hint: "2+ blocker elit (Tsukishima, Kuroo, Aone, Hirugami, Tendou)", category: "SPESIAL" },
+  { id: "serve-barrage", name: "Hujan Jump Serve", hint: "3+ spesialis jump serve dalam satu tim", category: "SPESIAL" },
+  { id: "captains-aura", name: "Karisma Para Kapten", hint: "3+ kapten sekolah dalam satu tim", category: "SPESIAL" },
+  { id: "top3-aces", name: "Meriam Top 3 Nasional", hint: "2+ Ace Top 3 Nasional (Ushijima, Sakusa, Kiryu)", category: "SPESIAL" },
+] as const;
+
 export type LineupMap = Partial<Record<CourtSlotId, HaikyuuPlayer>>;
+
+export interface FormationCheckItem {
+  label: string;
+  met: boolean;
+}
+
+export interface FormationStatus {
+  satisfied: boolean;
+  bonus: number;
+  checks: FormationCheckItem[];
+}
 
 export interface TeamEvaluation {
   baseOvr: number;
   fitPenaltyTotal: number;
   synergyBonus: number;
   formationBonus: number;
+  trainingBonus: number;
   totalOvr: number;
   karasunoCount: number;
   activeSynergies: ActiveSynergy[];
@@ -1839,14 +1892,84 @@ export function getPotentialResonances(
     .sort((a, b) => b.ovrBonus - a.ovrBonus);
 }
 
+export function getFormationStatus(
+  lineup: LineupMap,
+  formationId: FormationId,
+  avgDefense = 0,
+  synergyCount = 0
+): FormationStatus {
+  const entries = Object.entries(lineup) as [CourtSlotId, HaikyuuPlayer | undefined][];
+  const filled = entries.filter((entry): entry is [CourtSlotId, HaikyuuPlayer] =>
+    Boolean(entry[1])
+  );
+
+  if (formationId === "run-gun") {
+    const setter = lineup.S;
+    const mb1 = lineup.MB1;
+    const mb2 = lineup.MB2;
+    const setterOk = Boolean(setter && setter.stats.speed >= 87);
+    const mbOk = Boolean(
+      (mb1 && mb1.stats.speed >= 88) || (mb2 && mb2.stats.speed >= 88)
+    );
+    const satisfied = setterOk && mbOk;
+    return {
+      satisfied,
+      bonus: satisfied ? 1.8 : 0,
+      checks: [
+        { label: "Setter Speed ≥ 87", met: setterOk },
+        { label: "Min. 1 MB Speed ≥ 88", met: mbOk },
+      ],
+    };
+  }
+
+  if (formationId === "total-defense") {
+    const libero = lineup.L;
+    const liberoOk = Boolean(libero && libero.ovr >= 88);
+    const defOk = avgDefense >= 85;
+    const satisfied = liberoOk && defOk;
+    return {
+      satisfied,
+      bonus: satisfied ? 1.8 : 0,
+      checks: [
+        { label: "Libero OVR ≥ 88", met: liberoOk },
+        { label: "Rata-rata Defense ≥ 85", met: defOk },
+      ],
+    };
+  }
+
+  if (formationId === "cannon-ace") {
+    const hasEliteAce = filled.some(
+      ([slotId, p]) =>
+        (slotId === "OH1" || slotId === "OH2" || slotId === "OP") && p.ovr >= 92
+    );
+    return {
+      satisfied: hasEliteAce,
+      bonus: hasEliteAce ? 1.8 : 0,
+      checks: [{ label: "Spiker (OH/OP) OVR ≥ 92", met: hasEliteAce }],
+    };
+  }
+
+  const bonus = Number(Math.min(2.0, synergyCount * 0.6).toFixed(1));
+  return {
+    satisfied: synergyCount >= 1,
+    bonus,
+    checks: [
+      { label: `Resonansi Aktif (${Math.min(synergyCount, 4)}/3+ maks)`, met: synergyCount >= 3 },
+    ],
+  };
+}
+
 export function evaluateTeam(
   lineup: LineupMap,
-  formationId: FormationId
+  formationId: FormationId,
+  trainingBonus = 0
 ): TeamEvaluation {
   const entries = Object.entries(lineup) as [CourtSlotId, HaikyuuPlayer | undefined][];
   const filled = entries.filter((entry): entry is [CourtSlotId, HaikyuuPlayer] =>
     Boolean(entry[1])
   );
+
+  const normalizedTraining = Number(Math.max(0, trainingBonus).toFixed(1));
 
   if (filled.length === 0) {
     return {
@@ -1854,6 +1977,7 @@ export function evaluateTeam(
       fitPenaltyTotal: 0,
       synergyBonus: 0,
       formationBonus: 0,
+      trainingBonus: normalizedTraining,
       totalOvr: 0,
       karasunoCount: 0,
       activeSynergies: [],
@@ -1904,37 +2028,22 @@ export function evaluateTeam(
   const rawSynergyBonus = activeSynergies.reduce((acc, s) => acc + s.ovrBonus, 0);
   const synergyBonus = Number(Math.min(5.0, rawSynergyBonus).toFixed(1));
 
-  // Formation bonus requires meeting the tactical condition (no free base OVR inflation)
-  let formationBonus = 0;
-  if (formationId === "run-gun") {
-    const setter = lineup.S;
-    const mb1 = lineup.MB1;
-    const mb2 = lineup.MB2;
-    const fastMb =
-      (mb1 && mb1.stats.speed >= 88) || (mb2 && mb2.stats.speed >= 88);
-    if (setter && setter.stats.speed >= 87 && fastMb) {
-      formationBonus = 1.8;
-    }
-  } else if (formationId === "total-defense") {
-    const libero = lineup.L;
-    if (libero && libero.ovr >= 88 && stats.defense >= 85) {
-      formationBonus = 1.8;
-    }
-  } else if (formationId === "cannon-ace") {
-    const hasEliteAce = filled.some(
-      ([slotId, p]) =>
-        (slotId === "OH1" || slotId === "OH2" || slotId === "OP") && p.ovr >= 92
-    );
-    if (hasEliteAce) {
-      formationBonus = 1.8;
-    }
-  } else if (formationId === "all-out-sync") {
-    formationBonus = Math.min(2.0, activeSynergies.length * 0.6);
-  }
-  formationBonus = Number(formationBonus.toFixed(1));
+  const formationStatus = getFormationStatus(
+    lineup,
+    formationId,
+    stats.defense,
+    activeSynergies.length
+  );
+  const formationBonus = Number(formationStatus.bonus.toFixed(1));
 
   const totalOvr = Number(
-    Math.min(99.9, Math.max(50, baseOvr - avgPenalty + synergyBonus + formationBonus)).toFixed(1)
+    Math.min(
+      99.9,
+      Math.max(
+        50,
+        baseOvr - avgPenalty + synergyBonus + formationBonus + normalizedTraining
+      )
+    ).toFixed(1)
   );
 
   return {
@@ -1942,6 +2051,7 @@ export function evaluateTeam(
     fitPenaltyTotal: avgPenalty,
     synergyBonus,
     formationBonus,
+    trainingBonus: normalizedTraining,
     totalOvr,
     karasunoCount,
     activeSynergies,
@@ -1961,6 +2071,13 @@ export interface HarukoOpponent {
   primaryColor: string;
   secondaryColor: string;
   starPlayer: string;
+  starNumber: number;
+  starPosition: VolleyPosition;
+  playstyleTag: string;
+  tacticalHint: string;
+  favoredStat: keyof HaikyuuPlayerStats;
+  counterStat: keyof HaikyuuPlayerStats;
+  statThreshold: number;
 }
 
 export const HARUKO_BRACKET: readonly HarukoOpponent[] = [
@@ -1975,6 +2092,13 @@ export const HARUKO_BRACKET: readonly HarukoOpponent[] = [
     primaryColor: "#eab308",
     secondaryColor: "#27272a",
     starPlayer: "Yuji Terushima",
+    starNumber: 1,
+    starPosition: "OH",
+    playstyleTag: "MAIN BEBAS",
+    tacticalHint: "Serangan improvisasi Johzenji mudah dipatahkan tim ber-Brain tinggi.",
+    favoredStat: "speed",
+    counterStat: "brain",
+    statThreshold: 82,
   },
   {
     roundIndex: 1,
@@ -1987,6 +2111,13 @@ export const HARUKO_BRACKET: readonly HarukoOpponent[] = [
     primaryColor: "#1e3a8a",
     secondaryColor: "#e2e8f0",
     starPlayer: "Takeru Nakashima",
+    starNumber: 1,
+    starPosition: "OH",
+    playstyleTag: "WIPEOUT & GIGIH",
+    tacticalHint: "Pukulan wipeout Nakashima menguji Defense; balas lewat Serve tajam.",
+    favoredStat: "defense",
+    counterStat: "serve",
+    statThreshold: 83,
   },
   {
     roundIndex: 2,
@@ -1999,6 +2130,13 @@ export const HARUKO_BRACKET: readonly HarukoOpponent[] = [
     primaryColor: "#f8fafc",
     secondaryColor: "#14b8a6",
     starPlayer: "Toru Oikawa",
+    starNumber: 1,
+    starPosition: "S",
+    playstyleTag: "SERVIS & KOMANDO",
+    tacticalHint: "Jump serve Oikawa menekan receive; Speed tinggi mengacaukan bacaan bloknya.",
+    favoredStat: "defense",
+    counterStat: "speed",
+    statThreshold: 85,
   },
   {
     roundIndex: 3,
@@ -2011,6 +2149,13 @@ export const HARUKO_BRACKET: readonly HarukoOpponent[] = [
     primaryColor: "#f8fafc",
     secondaryColor: "#7e22ce",
     starPlayer: "Wakatoshi Ushijima",
+    starNumber: 1,
+    starPosition: "OP",
+    playstyleTag: "MERIAM KIRI",
+    tacticalHint: "Spike kidal Ushijima menguji Defense total; serang cepat (Speed) jadi celah.",
+    favoredStat: "defense",
+    counterStat: "speed",
+    statThreshold: 86,
   },
   {
     roundIndex: 4,
@@ -2023,6 +2168,13 @@ export const HARUKO_BRACKET: readonly HarukoOpponent[] = [
     primaryColor: "#1e3a8a",
     secondaryColor: "#93c5fd",
     starPlayer: "Motoki Teradomari",
+    starNumber: 3,
+    starPosition: "OH",
+    playstyleTag: "TEMBAKAN TINGGI",
+    tacticalHint: "Servis langit-langit & spike tinggi Tsubakihara rentan ditekan Attack solid.",
+    favoredStat: "defense",
+    counterStat: "attack",
+    statThreshold: 86,
   },
   {
     roundIndex: 5,
@@ -2035,6 +2187,13 @@ export const HARUKO_BRACKET: readonly HarukoOpponent[] = [
     primaryColor: "#18181b",
     secondaryColor: "#9f1239",
     starPlayer: "Si Kembar Miya",
+    starNumber: 7,
+    starPosition: "S",
+    playstyleTag: "AGRESIF & KEMBAR",
+    tacticalHint: "Tekanan servis Miya butuh Brain tenang dan Defense matang agar tak terbawa ritme.",
+    favoredStat: "defense",
+    counterStat: "brain",
+    statThreshold: 87,
   },
   {
     roundIndex: 6,
@@ -2047,6 +2206,13 @@ export const HARUKO_BRACKET: readonly HarukoOpponent[] = [
     primaryColor: "#dc2626",
     secondaryColor: "#18181b",
     starPlayer: "Kuroo & Kenma",
+    starNumber: 1,
+    starPosition: "MB",
+    playstyleTag: "LANTAI TERHUBUNG",
+    tacticalHint: "Pertahanan Nekoma hampir tak tembus—butuh Attack & Serve keras untuk memutus reli.",
+    favoredStat: "brain",
+    counterStat: "attack",
+    statThreshold: 89,
   },
   {
     roundIndex: 7,
@@ -2059,6 +2225,13 @@ export const HARUKO_BRACKET: readonly HarukoOpponent[] = [
     primaryColor: "#f0f9ff",
     secondaryColor: "#0284c7",
     starPlayer: "Korai Hoshiumi",
+    starNumber: 5,
+    starPosition: "OH",
+    playstyleTag: "BUNCH READ BLOCK",
+    tacticalHint: "Blok terstruktur Kamomedai hanya bisa dipecah oleh Speed tempo ekstrem & umpan cerdas.",
+    favoredStat: "attack",
+    counterStat: "speed",
+    statThreshold: 90,
   },
   {
     roundIndex: 8,
@@ -2071,6 +2244,13 @@ export const HARUKO_BRACKET: readonly HarukoOpponent[] = [
     primaryColor: "#1e293b",
     secondaryColor: "#eab308",
     starPlayer: "Kotaro Bokuto",
+    starNumber: 4,
+    starPosition: "OH",
+    playstyleTag: "ACE TIGA SUDUT",
+    tacticalHint: "Serangan tajam Bokuto butuh tim ber-Serve menekan agar aliran umpan Akaashi terganggu.",
+    favoredStat: "defense",
+    counterStat: "serve",
+    statThreshold: 89,
   },
   {
     roundIndex: 9,
@@ -2083,6 +2263,97 @@ export const HARUKO_BRACKET: readonly HarukoOpponent[] = [
     primaryColor: "#14532d",
     secondaryColor: "#a3e635",
     starPlayer: "Sakusa & Komori",
+    starNumber: 10,
+    starPosition: "OH",
+    playstyleTag: "STANDAR JUARA",
+    tacticalHint: "Juara bertahan lengkap di segala lini—butuh Brain & eksekusi set tanpa celah.",
+    favoredStat: "defense",
+    counterStat: "brain",
+    statThreshold: 91,
+  },
+] as const;
+
+const STAT_LABELS_ID: Record<keyof HaikyuuPlayerStats, string> = {
+  attack: "Attack",
+  defense: "Defense",
+  serve: "Serve",
+  brain: "Brain",
+  speed: "Speed",
+};
+
+export interface MatchupEdge {
+  deltaOvr: number;
+  advantageLabel: string;
+  detail: string;
+}
+
+export function computeMatchupEdge(
+  teamEval: TeamEvaluation,
+  opponent: HarukoOpponent
+): MatchupEdge {
+  const counterVal = teamEval.stats[opponent.counterStat];
+  const favoredVal = teamEval.stats[opponent.favoredStat];
+
+  const counterDiff = (counterVal - opponent.statThreshold) * 0.14;
+  const stabilityDiff = (favoredVal - (opponent.statThreshold - 2)) * 0.08;
+  const rawDelta = Math.max(-1.4, Math.min(1.6, counterDiff + stabilityDiff));
+  const deltaOvr = Number(rawDelta.toFixed(1));
+
+  const cLabel = STAT_LABELS_ID[opponent.counterStat];
+  const fLabel = STAT_LABELS_ID[opponent.favoredStat];
+
+  if (deltaOvr >= 0.4) {
+    return {
+      deltaOvr,
+      advantageLabel: "Unggul Taktis",
+      detail: `${cLabel} tim (${counterVal}) efektif menekan gaya ${opponent.playstyleTag}.`,
+    };
+  }
+  if (deltaOvr <= -0.4) {
+    return {
+      deltaOvr,
+      advantageLabel: "Tertekan Gaya Lawan",
+      detail: `${fLabel} (${favoredVal}) & ${cLabel} (${counterVal}) masih di bawah target lawan (${opponent.statThreshold}).`,
+    };
+  }
+  return {
+    deltaOvr,
+    advantageLabel: "Berimbang",
+    detail: `Matchup ${cLabel} vs ${opponent.playstyleTag} berjalan seimbang.`,
+  };
+}
+
+export type CoachTimeoutId = "target-serve" | "read-block" | "pinch-server";
+
+export interface CoachTimeoutOption {
+  id: CoachTimeoutId;
+  name: string;
+  shortTag: string;
+  description: string;
+  baseBoost: number;
+}
+
+export const COACH_TIMEOUT_OPTIONS: readonly CoachTimeoutOption[] = [
+  {
+    id: "target-serve",
+    name: "Servis Target Receiver",
+    shortTag: "+SERVE",
+    description: "+1.5 OVR di set ini (jadi +2.0 jika Serve tim ≥ 88).",
+    baseBoost: 1.5,
+  },
+  {
+    id: "read-block",
+    name: "Instruksi Read Block",
+    shortTag: "+BLOCK",
+    description: "+1.4 OVR di set ini (jadi +2.0 jika Brain atau Defense ≥ 88).",
+    baseBoost: 1.4,
+  },
+  {
+    id: "pinch-server",
+    name: "Kirim Pinch Server",
+    shortTag: "CLUTCH",
+    description: "+1.3 OVR di set biasa, melonjak jadi +2.4 OVR di Set Penentuan/Tertinggal.",
+    baseBoost: 1.3,
   },
 ] as const;
 
@@ -2091,6 +2362,7 @@ export interface SetScore {
   karasuno: number;
   opponent: number;
   highlight: string;
+  coachCallUsed?: CoachTimeoutId;
 }
 
 export interface TournamentMatchResult {
@@ -2100,6 +2372,20 @@ export interface TournamentMatchResult {
   opponentSets: number;
   sets: SetScore[];
   mvpName: string;
+  matchupDelta?: number;
+}
+
+export interface LiveMatchState {
+  opponent: HarukoOpponent;
+  teamEval: TeamEvaluation;
+  lineup: LineupMap;
+  matchupEdge: MatchupEdge;
+  effectiveBaseOvr: number;
+  karasunoSets: number;
+  opponentSets: number;
+  sets: SetScore[];
+  finished: boolean;
+  won: boolean;
 }
 
 export interface TournamentRunSummary {
@@ -2172,7 +2458,8 @@ function buildSetHighlight(
   setNumber: number,
   kScore: number,
   oScore: number,
-  rng: () => number
+  rng: () => number,
+  coachCall?: CoachTimeoutId
 ): string {
   const drafted = Object.values(lineup).filter((p): p is HaikyuuPlayer => Boolean(p));
   const setter = lineup.S;
@@ -2182,6 +2469,16 @@ function buildSetHighlight(
   );
   const star =
     spikers.sort((a, b) => b.ovr - a.ovr)[0] ?? drafted[0] ?? HAIKYUU_PLAYERS[0]!;
+
+  if (coachCall && karasunoWon) {
+    if (coachCall === "target-serve") {
+      return `Timeout Pelatih jitu! Servis terarah merusak formasi terima ${opponent.shortName} di Set ${setNumber}.`;
+    }
+    if (coachCall === "read-block") {
+      return `Instruksi Read Block sukses! Barisan depan Karasuno mengunci jalur spike ${opponent.starPlayer}.`;
+    }
+    return `Pinch Server menggila di momen krusial! Rentetan poin membawa Karasuno mengunci Set ${setNumber}.`;
+  }
 
   if (karasunoWon) {
     if (kScore >= 26 || (setNumber === 5 && kScore >= 16)) {
@@ -2202,6 +2499,31 @@ function buildSetHighlight(
     `Duel reli panjang berakhir untuk keunggulan tipis ${opponent.shortName} (${oScore}-${kScore}).`,
   ];
   return lossTemplates[Math.floor(rng() * lossTemplates.length)]!;
+}
+
+function getCoachTimeoutBoost(
+  coachCall: CoachTimeoutId | undefined,
+  teamEval: TeamEvaluation,
+  opponent: HarukoOpponent,
+  karasunoSets: number,
+  opponentSets: number,
+  setNumber: number
+): number {
+  if (!coachCall) return 0;
+  const setsToWin = opponent.bestOf === 5 ? 3 : 2;
+  const isDecidingOrBehind =
+    opponentSets > karasunoSets ||
+    (karasunoSets === setsToWin - 1 && opponentSets === setsToWin - 1) ||
+    setNumber === opponent.bestOf;
+
+  if (coachCall === "target-serve") {
+    return teamEval.stats.serve >= 88 ? 2.0 : 1.5;
+  }
+  if (coachCall === "read-block") {
+    return teamEval.stats.brain >= 88 || teamEval.stats.defense >= 88 ? 2.0 : 1.4;
+  }
+  // pinch-server
+  return isDecidingOrBehind ? 2.4 : 1.3;
 }
 
 function simulateSingleSet(
@@ -2233,57 +2555,115 @@ function simulateSingleSet(
   }
 }
 
+export function createLiveMatchState(
+  teamEval: TeamEvaluation,
+  lineup: LineupMap,
+  opponent: HarukoOpponent,
+  rng: () => number = Math.random
+): LiveMatchState {
+  const matchupEdge = computeMatchupEdge(teamEval, opponent);
+  // Match-level tactical variance (+/- 1.5 OVR) + matchup edge
+  const momentumShift = (rng() - 0.5) * 3.0;
+  const effectiveBaseOvr = teamEval.totalOvr + matchupEdge.deltaOvr + momentumShift;
+
+  return {
+    opponent,
+    teamEval,
+    lineup,
+    matchupEdge,
+    effectiveBaseOvr,
+    karasunoSets: 0,
+    opponentSets: 0,
+    sets: [],
+    finished: false,
+    won: false,
+  };
+}
+
+export function playNextMatchSet(
+  state: LiveMatchState,
+  coachCall?: CoachTimeoutId,
+  rng: () => number = Math.random
+): LiveMatchState {
+  if (state.finished) return state;
+
+  const setsToWin = state.opponent.bestOf === 5 ? 3 : 2;
+  const setNumber = state.sets.length + 1;
+  const targetPoints = state.opponent.bestOf === 5 && setNumber === 5 ? 15 : 25;
+  const coachBoost = getCoachTimeoutBoost(
+    coachCall,
+    state.teamEval,
+    state.opponent,
+    state.karasunoSets,
+    state.opponentSets,
+    setNumber
+  );
+
+  const score = simulateSingleSet(
+    state.effectiveBaseOvr + coachBoost,
+    state.opponent.ovr,
+    targetPoints,
+    rng
+  );
+  const kWon = score.karasuno > score.opponent;
+  const karasunoSets = state.karasunoSets + (kWon ? 1 : 0);
+  const opponentSets = state.opponentSets + (kWon ? 0 : 1);
+  const finished = karasunoSets >= setsToWin || opponentSets >= setsToWin;
+
+  const nextSet: SetScore = {
+    setNumber,
+    karasuno: score.karasuno,
+    opponent: score.opponent,
+    highlight: buildSetHighlight(
+      kWon,
+      state.lineup,
+      state.opponent,
+      setNumber,
+      score.karasuno,
+      score.opponent,
+      rng,
+      coachCall
+    ),
+    coachCallUsed: coachCall,
+  };
+
+  return {
+    ...state,
+    karasunoSets,
+    opponentSets,
+    sets: [...state.sets, nextSet],
+    finished,
+    won: karasunoSets > opponentSets,
+  };
+}
+
+export function finalizeLiveMatch(state: LiveMatchState): TournamentMatchResult {
+  const drafted = Object.values(state.lineup).filter((p): p is HaikyuuPlayer => Boolean(p));
+  const sortedByImpact = [...drafted].sort((a, b) => b.ovr - a.ovr);
+  const mvpName = sortedByImpact[0]?.name ?? "Tim Karasuno";
+
+  return {
+    opponent: state.opponent,
+    won: state.karasunoSets > state.opponentSets,
+    karasunoSets: state.karasunoSets,
+    opponentSets: state.opponentSets,
+    sets: state.sets,
+    mvpName,
+    matchupDelta: state.matchupEdge.deltaOvr,
+  };
+}
+
 export function simulateHarukoMatch(
   teamEval: TeamEvaluation,
   lineup: LineupMap,
   opponent: HarukoOpponent,
   rng: () => number = Math.random
 ): TournamentMatchResult {
-  const setsToWin = opponent.bestOf === 5 ? 3 : 2;
-  let karasunoSets = 0;
-  let opponentSets = 0;
-  const sets: SetScore[] = [];
-
-  // Match-level tactical variance (+/- 1.5 OVR)
-  const momentumShift = (rng() - 0.5) * 3.0;
-  const effectiveTeamOvr = teamEval.totalOvr + momentumShift;
-
-  while (karasunoSets < setsToWin && opponentSets < setsToWin) {
-    const setNumber = sets.length + 1;
-    const targetPoints = opponent.bestOf === 5 && setNumber === 5 ? 15 : 25;
-    const score = simulateSingleSet(effectiveTeamOvr, opponent.ovr, targetPoints, rng);
-    const kWon = score.karasuno > score.opponent;
-    if (kWon) karasunoSets += 1;
-    else opponentSets += 1;
-
-    sets.push({
-      setNumber,
-      karasuno: score.karasuno,
-      opponent: score.opponent,
-      highlight: buildSetHighlight(
-        kWon,
-        lineup,
-        opponent,
-        setNumber,
-        score.karasuno,
-        score.opponent,
-        rng
-      ),
-    });
+  let state = createLiveMatchState(teamEval, lineup, opponent, rng);
+  while (!state.finished) {
+    state = playNextMatchSet(state, undefined, rng);
   }
-
-  const drafted = Object.values(lineup).filter((p): p is HaikyuuPlayer => Boolean(p));
-  const sortedByImpact = [...drafted].sort((a, b) => b.ovr - a.ovr);
-  const mvpName = sortedByImpact[0]?.name ?? "Tim Karasuno";
-
-  return {
-    opponent,
-    won: karasunoSets > opponentSets,
-    karasunoSets,
-    opponentSets,
-    sets,
-    mvpName,
-  };
+  return finalizeLiveMatch(state);
 }
 
 export function simulateFullTournament(
@@ -2319,4 +2699,32 @@ export function simulateFullTournament(
     totalSetsLost,
     matches,
   };
+}
+
+export function hashSeedString(input: string): number {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return hash >>> 0;
+}
+
+export function createSeededRng(seedInput: number | string): () => number {
+  let s =
+    typeof seedInput === "number" ? seedInput >>> 0 : hashSeedString(seedInput);
+  if (s === 0) s = 0x6d2b79f5;
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+export function getDailyChallengeKey(date: Date = new Date()): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
