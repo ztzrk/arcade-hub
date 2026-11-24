@@ -30,6 +30,12 @@ const Susun4Board = lazy(() =>
   }))
 );
 
+const UlarTanggaBoard = lazy(() =>
+  import("./ular-tangga/UlarTanggaBoard").then((m) => ({
+    default: m.UlarTanggaBoard,
+  }))
+);
+
 export const REGISTERED_GAMES: RegisteredGame[] = [
   {
     id: "liars-deck",
@@ -62,6 +68,15 @@ export const REGISTERED_GAMES: RegisteredGame[] = [
     minPlayers: 2,
     maxPlayers: 2,
     Component: Susun4Board,
+  },
+  {
+    id: "ular-tangga",
+    name: "Ular Tangga Taktis",
+    tagline:
+      "Lomba ke petak 100 dengan perisai anti-ular, bom jebakan, tukar posisi & dadu spesial.",
+    minPlayers: 2,
+    maxPlayers: 2,
+    Component: UlarTanggaBoard,
   },
 ];
 
