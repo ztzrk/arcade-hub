@@ -36,6 +36,12 @@ const UlarTanggaBoard = lazy(() =>
   }))
 );
 
+const UnoNoMercyBoard = lazy(() =>
+  import("./uno-no-mercy/UnoNoMercyBoard").then((m) => ({
+    default: m.UnoNoMercyBoard,
+  }))
+);
+
 export const REGISTERED_GAMES: RegisteredGame[] = [
   {
     id: "liars-deck",
@@ -77,6 +83,15 @@ export const REGISTERED_GAMES: RegisteredGame[] = [
     minPlayers: 2,
     maxPlayers: 2,
     Component: UlarTanggaBoard,
+  },
+  {
+    id: "uno-no-mercy",
+    name: "UNO: No Mercy",
+    tagline:
+      "Stacking +2/+4/+6/+10, tukar tangan kartu 0, aturan KO 20 kartu, & tantangan UNO!",
+    minPlayers: 2,
+    maxPlayers: 2,
+    Component: UnoNoMercyBoard,
   },
 ];
 

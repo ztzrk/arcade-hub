@@ -5,6 +5,7 @@ import { susun4Engine } from "./Susun4Engine.ts";
 import { tebakKarakterEngine } from "./TebakKarakterEngine.ts";
 import { tebakKataEngine } from "./TebakKataEngine.ts";
 import { ularTanggaEngine } from "./UlarTanggaEngine.ts";
+import { unoNoMercyEngine } from "./UnoNoMercyEngine.ts";
 
 const engines = new Map<string, IGameEngine<any, any, any>>([
   [liarsDeckEngine.id, liarsDeckEngine],
@@ -12,6 +13,7 @@ const engines = new Map<string, IGameEngine<any, any, any>>([
   [tebakKarakterEngine.id, tebakKarakterEngine],
   [susun4Engine.id, susun4Engine],
   [ularTanggaEngine.id, ularTanggaEngine],
+  [unoNoMercyEngine.id, unoNoMercyEngine],
 ]);
 
 export function getEngine(gameId: string): IGameEngine<any, any, any> | undefined {

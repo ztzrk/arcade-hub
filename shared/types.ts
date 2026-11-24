@@ -1,6 +1,7 @@
 export * from "./tebakKarakterRoster.ts";
 export * from "./haikyuuHaruko.ts";
 export * from "./ularTangga.ts";
+export * from "./unoNoMercy.ts";
 
 export type PlayerSeat = 0 | 1;
 
