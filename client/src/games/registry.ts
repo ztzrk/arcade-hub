@@ -6,6 +6,12 @@ export interface RegisteredGame extends GameMeta {
   Component: LazyExoticComponent<ComponentType<GameBoardProps>>;
 }
 
+const BattleshipBoard = lazy(() =>
+  import("./battleship/BattleshipBoard").then((m) => ({
+    default: m.BattleshipBoard,
+  }))
+);
+
 const HaikyuuDraftBoard = lazy(() =>
   import("./haikyuu-draft/HaikyuuDraftBoard").then((m) => ({
     default: m.HaikyuuDraftBoard,
@@ -49,6 +55,15 @@ const UnoNoMercyBoard = lazy(() =>
 );
 
 export const REGISTERED_GAMES: RegisteredGame[] = [
+  {
+    id: "battleship",
+    name: "Battleship Taktis",
+    tagline:
+      "Perang kapal 1v1 dengan 2 Ranjau Laut, skill kapal aktif (Sonar, Cross Strike, Geser Kapal), & hit-streak!",
+    minPlayers: 2,
+    maxPlayers: 2,
+    Component: BattleshipBoard,
+  },
   {
     id: "haikyuu-draft",
     name: "Haikyuu!! Race Draft 1v1",

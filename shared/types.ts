@@ -1,6 +1,7 @@
 export * from "./tebakKarakterRoster.ts";
 export * from "./haikyuuHaruko.ts";
 export * from "./haikyuuDraft.ts";
+export * from "./battleship.ts";
 export * from "./ularTangga.ts";
 export * from "./unoNoMercy.ts";
 
