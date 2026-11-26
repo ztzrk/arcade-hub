@@ -24,7 +24,14 @@ export interface IGameEngine<TState = unknown, TAction = unknown, TView = unknow
   readonly minPlayers: number;
   readonly maxPlayers: number;
 
-  initState(playerIds: [string, string]): TState;
-  handleAction(state: TState, playerId: string, action: TAction): EngineResult<TState>;
+  initState(playerIds: [string, string], now?: number): TState;
+  handleAction(
+    state: TState,
+    playerId: string,
+    action: TAction,
+    now?: number
+  ): EngineResult<TState>;
   getViewForPlayer(state: TState, playerId: string): TView;
+  getNextTimeoutAt?(state: TState): number | null;
+  handleTimeout?(state: TState, now: number): EngineResult<TState> | null;
 }

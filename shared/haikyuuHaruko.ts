@@ -3067,3 +3067,172 @@ export function getDailyChallengeKey(date: Date = new Date()): string {
   const d = String(date.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
 }
+
+export function findBestAutoSlot(
+  player: HaikyuuPlayer,
+  lineup: LineupMap
+): CourtSlotId | null {
+  let bestSlot: CourtSlotId | null = null;
+  let bestPenalty = Number.POSITIVE_INFINITY;
+
+  for (const slot of COURT_SLOTS) {
+    if (lineup[slot.id]) continue;
+    const fit = getPositionFit(player, slot.id);
+    if (fit.penalty < bestPenalty) {
+      bestPenalty = fit.penalty;
+      bestSlot = slot.id;
+    }
+  }
+  return bestSlot;
+}
+
+export interface PvpTacticalEdge {
+  deltaOvrForA: number;
+  summary: string;
+}
+
+const FORMATION_COUNTER_PAIRS: Record<FormationId, FormationId> = {
+  "total-defense": "cannon-ace",
+  "run-gun": "total-defense",
+  "cannon-ace": "all-out-sync",
+  "all-out-sync": "run-gun",
+};
+
+export function computePvpTacticalEdge(
+  evalA: TeamEvaluation,
+  formationA: FormationId,
+  evalB: TeamEvaluation,
+  formationB: FormationId
+): PvpTacticalEdge {
+  const atkVsDef = (evalA.stats.attack - evalB.stats.defense) * 0.04;
+  const defVsAtk = (evalA.stats.defense - evalB.stats.attack) * 0.04;
+  const srvEdge = (evalA.stats.serve - evalB.stats.serve) * 0.03;
+  const tempoEdge =
+    ((evalA.stats.speed - evalB.stats.brain) -
+      (evalB.stats.speed - evalA.stats.brain)) *
+    0.025;
+
+  let formationEdge = 0;
+  let formationNote = "";
+  if (FORMATION_COUNTER_PAIRS[formationA] === formationB) {
+    formationEdge = 0.5;
+    formationNote = "Counter formasi menguntungkan kubu pertama.";
+  } else if (FORMATION_COUNTER_PAIRS[formationB] === formationA) {
+    formationEdge = -0.5;
+    formationNote = "Counter formasi menguntungkan kubu kedua.";
+  }
+
+  const rawDelta = Math.max(
+    -1.5,
+    Math.min(1.5, atkVsDef + defVsAtk + srvEdge + tempoEdge + formationEdge)
+  );
+  const deltaOvrForA = Number(rawDelta.toFixed(1));
+
+  if (deltaOvrForA >= 0.4) {
+    return {
+      deltaOvrForA,
+      summary:
+        formationNote ||
+        `Matchup taktis unggul +${deltaOvrForA.toFixed(1)} OVR dari keseimbangan stat.`,
+    };
+  }
+  if (deltaOvrForA <= -0.4) {
+    return {
+      deltaOvrForA,
+      summary:
+        formationNote ||
+        `Lawan unggul matchup taktis +${Math.abs(deltaOvrForA).toFixed(1)} OVR.`,
+    };
+  }
+  return {
+    deltaOvrForA,
+    summary: formationNote || "Duel taktis & komposisi berjalan seimbang.",
+  };
+}
+
+function getLineupStarName(lineup: LineupMap, preferredPos?: VolleyPosition): string {
+  const players = Object.values(lineup).filter((p): p is HaikyuuPlayer => Boolean(p));
+  if (preferredPos) {
+    const match = players
+      .filter((p) => p.position === preferredPos)
+      .sort((a, b) => b.ovr - a.ovr)[0];
+    if (match) return match.name;
+  }
+  return players.sort((a, b) => b.ovr - a.ovr)[0]?.name ?? "Ace";
+}
+
+function buildPvpSetHighlight(
+  winnerName: string,
+  winnerLineup: LineupMap,
+  loserLineup: LineupMap,
+  setNumber: number,
+  winScore: number,
+  loseScore: number,
+  rng: () => number
+): string {
+  const wAce = getLineupStarName(winnerLineup, "OH");
+  const wSetter = getLineupStarName(winnerLineup, "S");
+  const wLibero = getLineupStarName(winnerLineup, "L");
+  const lAce = getLineupStarName(loserLineup, "OP");
+
+  if (winScore >= 26 || (setNumber === 3 && winScore >= 16)) {
+    return `Deuce panas (${winScore}-${loseScore})! ${wAce} menutup Set ${setNumber} untuk ${winnerName}.`;
+  }
+
+  const templates = [
+    `${wSetter} melepas umpan kilat untuk ${wAce} menembus blok lawan (${winScore}-${loseScore})!`,
+    `${wLibero} menggagalkan spike ${lAce}, lalu ${winnerName} membalikkan reli di Set ${setNumber}.`,
+    `Tekanan jump serve dari ${winnerName} memutus ritme receive lawan (${winScore}-${loseScore}).`,
+    `Blok rapat ${winnerName} meredam gempuran ${lAce} di poin penentu Set ${setNumber}!`,
+  ];
+  return templates[Math.floor(rng() * templates.length)]!;
+}
+
+export function simulatePvpSet(
+  playerAId: string,
+  playerAName: string,
+  evalA: TeamEvaluation,
+  lineupA: LineupMap,
+  formationA: FormationId,
+  playerBId: string,
+  playerBName: string,
+  evalB: TeamEvaluation,
+  lineupB: LineupMap,
+  formationB: FormationId,
+  setNumber: number,
+  targetPoints: number,
+  rng: () => number = Math.random
+): {
+  setNumber: number;
+  scores: Record<string, number>;
+  winnerId: string;
+  highlight: string;
+  tacticalSummary: string;
+} {
+  const edge = computePvpTacticalEdge(evalA, formationA, evalB, formationB);
+  const ovrA = evalA.totalOvr + edge.deltaOvrForA;
+  const ovrB = evalB.totalOvr;
+  const score = simulateSingleSet(ovrA, ovrB, targetPoints, rng);
+  const aWon = score.karasuno > score.opponent;
+  const winnerId = aWon ? playerAId : playerBId;
+  const highlight = buildPvpSetHighlight(
+    aWon ? playerAName : playerBName,
+    aWon ? lineupA : lineupB,
+    aWon ? lineupB : lineupA,
+    setNumber,
+    aWon ? score.karasuno : score.opponent,
+    aWon ? score.opponent : score.karasuno,
+    rng
+  );
+
+  return {
+    setNumber,
+    scores: {
+      [playerAId]: score.karasuno,
+      [playerBId]: score.opponent,
+    },
+    winnerId,
+    highlight,
+    tacticalSummary: edge.summary,
+  };
+}

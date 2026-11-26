@@ -6,6 +6,12 @@ export interface RegisteredGame extends GameMeta {
   Component: LazyExoticComponent<ComponentType<GameBoardProps>>;
 }
 
+const HaikyuuDraftBoard = lazy(() =>
+  import("./haikyuu-draft/HaikyuuDraftBoard").then((m) => ({
+    default: m.HaikyuuDraftBoard,
+  }))
+);
+
 const LiarsDeckBoard = lazy(() =>
   import("./liars-deck/LiarsDeckBoard").then((m) => ({
     default: m.LiarsDeckBoard,
@@ -43,6 +49,15 @@ const UnoNoMercyBoard = lazy(() =>
 );
 
 export const REGISTERED_GAMES: RegisteredGame[] = [
+  {
+    id: "haikyuu-draft",
+    name: "Haikyuu!! Race Draft 1v1",
+    tagline:
+      "Adu cepat rebutan pemain Haikyuu!! tiap 15 detik, racik sinergi & formasi, lalu duel Best of 3!",
+    minPlayers: 2,
+    maxPlayers: 2,
+    Component: HaikyuuDraftBoard,
+  },
   {
     id: "liars-deck",
     name: "Liar's Deck",

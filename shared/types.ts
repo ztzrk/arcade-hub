@@ -1,5 +1,6 @@
 export * from "./tebakKarakterRoster.ts";
 export * from "./haikyuuHaruko.ts";
+export * from "./haikyuuDraft.ts";
 export * from "./ularTangga.ts";
 export * from "./unoNoMercy.ts";
 
@@ -307,7 +308,7 @@ export type ServerMessage =
       seat: PlayerSeat;
     }
   | { type: "ROOM_STATE"; room: PublicRoomState }
-  | { type: "GAME_STATE"; view: unknown; events: GameEvent[] }
+  | { type: "GAME_STATE"; view: unknown; events: GameEvent[]; serverTime?: number }
   | {
       type: "TAUNT_RECEIVED";
       fromPlayerId: string;
@@ -315,4 +316,4 @@ export type ServerMessage =
       emoteId: TauntEmoteId;
     }
   | { type: "ERROR"; code: ErrorCode; message: string }
-  | { type: "PONG"; ts: number };
+  | { type: "PONG"; ts: number; serverTime?: number };

@@ -133,6 +133,7 @@ export function useGameSocket() {
   const [taunts, setTaunts] = useState<FloatingTaunt[]>([]);
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
   const [resumingRoomId, setResumingRoomId] = useState<string | null>(null);
+  const [serverTimeOffsetMs, setServerTimeOffsetMs] = useState(0);
 
   const wsRef = useRef<WebSocket | null>(null);
   const activeCredsRef = useRef<{ roomId: string; playerName: string } | null>(null);
@@ -234,6 +235,9 @@ export function useGameSocket() {
             return;
           }
           case "GAME_STATE": {
+            if (typeof msg.serverTime === "number") {
+              setServerTimeOffsetMs(msg.serverTime - Date.now());
+            }
             setGameView(msg.view);
             setLastEvents(msg.events);
             return;
@@ -272,8 +276,13 @@ export function useGameSocket() {
             transientTimersRef.current.add(errorTimer);
             return;
           }
-          case "PONG":
+          case "PONG": {
+            if (typeof msg.serverTime === "number") {
+              const rttHalf = Math.max(0, (Date.now() - msg.ts) / 2);
+              setServerTimeOffsetMs(msg.serverTime + rttHalf - Date.now());
+            }
             return;
+          }
         }
       };
 
@@ -385,6 +394,7 @@ export function useGameSocket() {
     taunts,
     errorBanner,
     resumingRoomId,
+    serverTimeOffsetMs,
     joinRoom,
     leaveRoom,
     setStake: (stakeText: string) => sendMessage({ type: "SET_STAKE", stakeText }),

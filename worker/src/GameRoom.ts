@@ -33,6 +33,7 @@ interface StoredRoomState {
   selectedGameId: string;
   lastWinnerId: string | null;
   engineState: unknown | null;
+  idleCleanupAt?: number;
 }
 
 interface SocketAttachment {
@@ -105,12 +106,12 @@ export class GameRoom extends DurableObject<Env> {
     }
 
     if (msg.type === "PING") {
-      this.sendTo(ws, { type: "PONG", ts: msg.ts });
+      this.sendTo(ws, { type: "PONG", ts: msg.ts, serverTime: Date.now() });
       return;
     }
 
     const state = await this.ensureState();
-    await this.refreshCleanupAlarm();
+    await this.refreshCleanupAlarm(state);
 
     if (msg.type === "JOIN_ROOM") {
       await this.handleJoinRoom(ws, state, msg);
@@ -187,6 +188,7 @@ export class GameRoom extends DurableObject<Env> {
           p.ready = false;
         }
         await this.persistState(state);
+        await this.scheduleNextAlarm(state);
         this.broadcastRoomState(state);
         return;
       }
@@ -213,6 +215,7 @@ export class GameRoom extends DurableObject<Env> {
               type: "GAME_STATE",
               view: engine.getViewForPlayer(state.engineState, player.id),
               events: [],
+              serverTime: Date.now(),
             });
           }
         }
@@ -234,13 +237,52 @@ export class GameRoom extends DurableObject<Env> {
   }
 
   async alarm(): Promise<void> {
+    const state = await this.ensureState();
+    const now = Date.now();
+
+    if (state.phase === "IN_GAME" && state.engineState !== null) {
+      const engine = getEngine(state.selectedGameId);
+      const nextTimeout = engine?.getNextTimeoutAt?.(state.engineState) ?? null;
+      if (nextTimeout !== null && nextTimeout <= now + 100 && engine?.handleTimeout) {
+        const result = engine.handleTimeout(state.engineState, now);
+        if (result) {
+          state.engineState = result.newState;
+          if (result.matchWinnerId) {
+            const winner = state.players.find((p) => p.id === result.matchWinnerId);
+            if (winner) {
+              winner.score += 1;
+            }
+            state.lastWinnerId = result.matchWinnerId;
+            state.phase = "MATCH_OVER";
+          }
+          await this.persistState(state);
+          if (result.matchWinnerId) {
+            this.broadcastRoomState(state);
+          }
+          this.broadcastGameViews(state, result.events, now);
+        }
+      }
+    }
+
     const activeSockets = this.ctx.getWebSockets();
-    if (activeSockets.length > 0) {
-      await this.refreshCleanupAlarm();
+    const pendingEngineTimeout =
+      state.phase === "IN_GAME" && state.engineState !== null
+        ? (getEngine(state.selectedGameId)?.getNextTimeoutAt?.(state.engineState) ?? null)
+        : null;
+    const idleCleanupAt = state.idleCleanupAt ?? now + IDLE_CLEANUP_MS;
+
+    if (activeSockets.length === 0 && pendingEngineTimeout === null && now >= idleCleanupAt) {
+      this.room = null;
+      await this.ctx.storage.deleteAll();
       return;
     }
-    this.room = null;
-    await this.ctx.storage.deleteAll();
+
+    if (activeSockets.length > 0 && now >= idleCleanupAt) {
+      state.idleCleanupAt = now + IDLE_CLEANUP_MS;
+      await this.persistState(state);
+    }
+
+    await this.scheduleNextAlarm(state);
   }
 
   private async handleJoinRoom(
@@ -321,6 +363,7 @@ export class GameRoom extends DurableObject<Env> {
           type: "GAME_STATE",
           view: engine.getViewForPlayer(state.engineState, player.id),
           events: [],
+          serverTime: Date.now(),
         });
       }
     }
@@ -349,19 +392,24 @@ export class GameRoom extends DurableObject<Env> {
     const sorted = [...state.players].sort((a, b) => a.seat - b.seat);
     const p1 = sorted[0]!;
     const p2 = sorted[1]!;
+    const now = Date.now();
 
     state.phase = "IN_GAME";
     state.lastWinnerId = null;
-    state.engineState = engine.initState([p1.id, p2.id]);
+    state.idleCleanupAt = now + IDLE_CLEANUP_MS;
+    state.engineState = engine.initState([p1.id, p2.id], now);
     for (const p of state.players) {
       p.ready = false;
     }
 
     await this.persistState(state);
+    await this.scheduleNextAlarm(state);
     this.broadcastRoomState(state);
-    this.broadcastGameViews(state, [
-      { type: "MATCH_STARTED", payload: { gameId: engine.id } },
-    ]);
+    this.broadcastGameViews(
+      state,
+      [{ type: "MATCH_STARTED", payload: { gameId: engine.id } }],
+      now
+    );
   }
 
   private async handleGameAction(
@@ -382,7 +430,8 @@ export class GameRoom extends DurableObject<Env> {
     }
 
     try {
-      const result = engine.handleAction(state.engineState, player.id, action);
+      const now = Date.now();
+      const result = engine.handleAction(state.engineState, player.id, action, now);
       state.engineState = result.newState;
 
       if (result.matchWinnerId) {
@@ -395,10 +444,11 @@ export class GameRoom extends DurableObject<Env> {
       }
 
       await this.persistState(state);
+      await this.scheduleNextAlarm(state);
       if (result.matchWinnerId) {
         this.broadcastRoomState(state);
       }
-      this.broadcastGameViews(state, result.events);
+      this.broadcastGameViews(state, result.events, now);
     } catch (err) {
       if (err instanceof EngineError) {
         this.sendError(ws, err.code, err.message);
@@ -485,6 +535,7 @@ export class GameRoom extends DurableObject<Env> {
       selectedGameId: "liars-deck",
       lastWinnerId: null,
       engineState: null,
+      idleCleanupAt: Date.now() + IDLE_CLEANUP_MS,
     };
     this.room = fresh;
     await this.ctx.storage.put(ROOM_STORAGE_KEY, fresh);
@@ -496,8 +547,26 @@ export class GameRoom extends DurableObject<Env> {
     await this.ctx.storage.put(ROOM_STORAGE_KEY, state);
   }
 
-  private async refreshCleanupAlarm(): Promise<void> {
-    await this.ctx.storage.setAlarm(Date.now() + IDLE_CLEANUP_MS);
+  private async refreshCleanupAlarm(state?: StoredRoomState): Promise<void> {
+    const target = state ?? this.room;
+    const idleAt = Date.now() + IDLE_CLEANUP_MS;
+    if (target) {
+      target.idleCleanupAt = idleAt;
+      await this.scheduleNextAlarm(target);
+      return;
+    }
+    await this.ctx.storage.setAlarm(idleAt);
+  }
+
+  private async scheduleNextAlarm(state: StoredRoomState): Promise<void> {
+    const idleAt = state.idleCleanupAt ?? Date.now() + IDLE_CLEANUP_MS;
+    let engineAt: number | null = null;
+    if (state.phase === "IN_GAME" && state.engineState !== null) {
+      const engine = getEngine(state.selectedGameId);
+      engineAt = engine?.getNextTimeoutAt?.(state.engineState) ?? null;
+    }
+    const nextAlarm = engineAt !== null ? Math.min(engineAt, idleAt) : idleAt;
+    await this.ctx.storage.setAlarm(nextAlarm);
   }
 
   private getAttachment(ws: WebSocket): SocketAttachment | null {
@@ -539,7 +608,11 @@ export class GameRoom extends DurableObject<Env> {
     });
   }
 
-  private broadcastGameViews(state: StoredRoomState, events: GameEvent[]): void {
+  private broadcastGameViews(
+    state: StoredRoomState,
+    events: GameEvent[],
+    serverTime = Date.now()
+  ): void {
     if (state.engineState === null) return;
     const engine = getEngine(state.selectedGameId);
     if (!engine) return;
@@ -553,6 +626,7 @@ export class GameRoom extends DurableObject<Env> {
           type: "GAME_STATE",
           view,
           events,
+          serverTime,
         });
       } catch {
         // Ignore sockets not belonging to a match participant

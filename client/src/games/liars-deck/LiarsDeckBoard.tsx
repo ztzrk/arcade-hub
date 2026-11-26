@@ -10,6 +10,7 @@ export interface GameBoardProps {
   room: PublicRoomState;
   playerId: string | null;
   lastEvents: GameEvent[];
+  serverTimeOffsetMs?: number;
   onAction: (action: unknown) => void;
   onSetReady: (ready: boolean) => void;
   onStartMatch: () => void;

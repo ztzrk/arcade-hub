@@ -42,6 +42,7 @@ export function App() {
     taunts,
     errorBanner,
     resumingRoomId,
+    serverTimeOffsetMs,
     joinRoom,
     leaveRoom,
     setStake,
@@ -168,6 +169,7 @@ export function App() {
                   room={room}
                   playerId={playerId}
                   lastEvents={lastEvents}
+                  serverTimeOffsetMs={serverTimeOffsetMs}
                   onAction={sendGameAction}
                   onSetReady={setReady}
                   onStartMatch={startMatch}

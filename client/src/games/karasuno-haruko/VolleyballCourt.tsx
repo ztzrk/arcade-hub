@@ -17,7 +17,10 @@ interface VolleyballCourtProps {
   selectedPlayer: HaikyuuPlayer | null;
   blindMode?: boolean;
   interactive?: boolean;
+  allowFilledSlotClick?: boolean;
+  highlightedSlotId?: CourtSlotId | null;
   onPlaceInSlot?: (slotId: CourtSlotId) => void;
+  onSlotClick?: (slotId: CourtSlotId) => void;
 }
 
 const FRONT_ROW: CourtSlotId[] = ["OH1", "MB1", "OP"];
@@ -43,7 +46,10 @@ export function VolleyballCourt({
   selectedPlayer,
   blindMode = false,
   interactive = true,
+  allowFilledSlotClick = false,
+  highlightedSlotId = null,
   onPlaceInSlot,
+  onSlotClick,
 }: VolleyballCourtProps) {
   const synergyPlayerIds = new Set(
     evaluation.activeSynergies.flatMap((s) => s.involvedPlayerIds)
@@ -77,6 +83,9 @@ export function VolleyballCourt({
     const player = lineup[slotId];
     const slotScore = evaluation.slotScores[slotId];
     const canPlace = interactive && Boolean(selectedPlayer) && !player;
+    const canSwapClick = interactive && allowFilledSlotClick && Boolean(player);
+    const isClickable = canPlace || canSwapClick;
+    const isHighlighted = highlightedSlotId === slotId;
     const previewFit =
       canPlace && selectedPlayer ? getPositionFit(selectedPlayer, slotId) : null;
     const hasSynergy = player ? synergyPlayerIds.has(player.id) : false;
@@ -92,16 +101,30 @@ export function VolleyballCourt({
       <button
         key={slotId}
         type="button"
-        disabled={!canPlace}
-        onClick={() => canPlace && onPlaceInSlot?.(slotId)}
+        disabled={!isClickable}
+        onClick={() => {
+          if (!isClickable) return;
+          if (canSwapClick && onSlotClick) {
+            onSlotClick(slotId);
+            return;
+          }
+          if (canPlace) {
+            onPlaceInSlot?.(slotId);
+            onSlotClick?.(slotId);
+          }
+        }}
         className={`relative flex w-full min-h-[104px] flex-col items-center justify-between rounded-md border p-2 text-center transition-all sm:min-h-[114px] ${
-          player
-            ? hasSynergy
-              ? "border-[#f97316] bg-[#161513]/95 shadow-[inset_0_0_0_1px_rgba(249,115,22,0.35)]"
-              : "border-white/20 bg-[#141513]/92"
-            : canPlace
-              ? "cursor-pointer border-white/80 bg-[#f97316]/20 hover:bg-[#f97316]/32"
-              : "border-dashed border-white/25 bg-black/25"
+          isHighlighted
+            ? "cursor-pointer border-emerald-400 bg-emerald-500/20 ring-2 ring-emerald-400/70"
+            : player
+              ? `${canSwapClick ? "cursor-pointer hover:border-[#d4a24c]" : ""} ${
+                  hasSynergy
+                    ? "border-[#f97316] bg-[#161513]/95 shadow-[inset_0_0_0_1px_rgba(249,115,22,0.35)]"
+                    : "border-white/20 bg-[#141513]/92"
+                }`
+              : canPlace
+                ? "cursor-pointer border-white/80 bg-[#f97316]/20 hover:bg-[#f97316]/32"
+                : "border-dashed border-white/25 bg-black/25"
         }`}
       >
         <div className="flex w-full items-center justify-between gap-1 text-[10px]">

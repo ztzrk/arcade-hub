@@ -1,5 +1,6 @@
 import type { GameMeta } from "@arcade-hub/shared";
 import type { IGameEngine } from "./IGameEngine.ts";
+import { haikyuuDraftEngine } from "./HaikyuuDraftEngine.ts";
 import { liarsDeckEngine } from "./LiarsDeckEngine.ts";
 import { susun4Engine } from "./Susun4Engine.ts";
 import { tebakKarakterEngine } from "./TebakKarakterEngine.ts";
@@ -8,6 +9,7 @@ import { ularTanggaEngine } from "./UlarTanggaEngine.ts";
 import { unoNoMercyEngine } from "./UnoNoMercyEngine.ts";
 
 const engines = new Map<string, IGameEngine<any, any, any>>([
+  [haikyuuDraftEngine.id, haikyuuDraftEngine],
   [liarsDeckEngine.id, liarsDeckEngine],
   [tebakKataEngine.id, tebakKataEngine],
   [tebakKarakterEngine.id, tebakKarakterEngine],
